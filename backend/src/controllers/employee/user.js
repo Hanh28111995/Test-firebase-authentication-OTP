@@ -14,7 +14,7 @@ export const getEmployeeProfile = async (req, res) => {
     if (error.message === "EMPLOYEE_NOT_FOUND") {
       return sendError(res, "Người dùng không tồn tại");
     }
-    return sendServerError(res, "Lỗi máy chủ khi lấy thông tin người dùng");
+    return sendServerError(res);
   }
 };
 

@@ -4,10 +4,6 @@ export const findAll = async (filter = {}) => {
   return await Task.find(filter);  
 };
 
-export const findByName = async (filter = {}) => {
-  return await Task.find(filter);  
-};
-
 export const findById = async (id) => {
   return await Task.findById(id);
 };

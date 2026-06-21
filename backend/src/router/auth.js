@@ -12,8 +12,11 @@ import { validateSignup } from "./../validate/forSignUp.js";
 const AUTHRouter = express.Router();
 
 AUTHRouter.post("/create-phone-code", validatePhone, loginPhone);
+
 AUTHRouter.post("/owner/validate-phone-code", checkPhoneAccessCode);
+
 AUTHRouter.post("/create-email-code", validateMail, loginEmail);
+
 AUTHRouter.post("/employee/validate-email-code", validateMail, checkEmailAccessCode);
-AUTHRouter.post("/account-confirm", activeAccount);
+
 export default AUTHRouter;

@@ -40,7 +40,7 @@ export const checkPhoneAccessCode = async (req, res) => {
       result,
     );
   } catch (error) {
-    return sendServerError(error);
+    return sendServerError(res);
   }
 };
 
@@ -52,27 +52,24 @@ export const loginEmail = async (req, res) => {
       return sendError(res, "Email là bắt buộc");
     }
 
-    const targetEmail = await authService.processLoginEmail(email);
-    return sendSuccess(
-      res,
-      `Mã truy cập đã được gửi thành công đến email: ${targetEmail}`,
-    );
+    const result = await authService.processLoginEmail(email);
+      return sendSuccess(res, "Xác thực user thành công", result);
   } catch (error) {
-    return sendServerError(error);
+    return sendServerError(res);
   }
 };
 
 //Employee xác thực mã OTP Email và lấy Token hệ thống
 export const checkEmailAccessCode = async (req, res) => {
   try {
-    const { email, accessCode } = req.body;
-    if (!email || !accessCode) {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
       return sendError(res, "Email và mã truy cập là bắt buộc");
     }
 
     const result = await authService.processCheckEmailAccessCode(
       email,
-      accessCode,
+      otp
     );
     return sendSuccess(
       res,
@@ -87,7 +84,7 @@ export const checkEmailAccessCode = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Mã truy cập không chính xác" });
     }
-    return sendServerError(error);
+    return sendServerError(res);
   }
 };
 
@@ -111,7 +108,7 @@ export const signUpEmployee = async (req, res) => {
       result,
     );
   } catch (error) {
-    return sendServerError(error);
+    return sendServerError(res);
   }
 };
 

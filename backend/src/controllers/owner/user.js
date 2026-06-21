@@ -16,10 +16,11 @@ export const createUser = async (req, res) => {
             result
         );
     } catch (error) {        
+        console.error(error)     
         if (error.message === "EMAIL_OR_PHONE_ALREADY_EXISTS") {
             return sendError(res, "Email hoặc số điện thoại đã tồn tại trên hệ thống");
         }        
-        return sendServerError(res, "Lỗi máy chủ khi khởi tạo người dùng");
+        return sendServerError(res);
     }
 };
 
@@ -27,8 +28,9 @@ export const getAllUsers = async (req, res) => {
     try {
         const users = await userService.ownerGetAllEmployees();
         return sendSuccess(res, "Danh sách người dùng", users);
-    } catch (error) {        
-        return sendServerError(res, "Lỗi máy chủ khi lấy danh sách người dùng");
+    } catch (error) {   
+        console.error(error)     
+        return sendServerError(res);
     }       
 };
 
@@ -42,7 +44,7 @@ export const getUserDetails = async (req, res) => {
         if (error.message === "EMPLOYEE_NOT_FOUND" || error.message === "USER_NOT_FOUND") {
             return sendError(res, "Người dùng không tồn tại");
         }
-        return sendServerError(res, "Lỗi máy chủ khi lấy thông tin người dùng");
+        return sendServerError(res);
     }
 };
 
@@ -52,11 +54,12 @@ export const updateUser = async (req, res) => {
         const updateData = req.body;
         const updatedUser = await userService.ownerUpdateEmployee(userId, updateData);        
         return sendSuccess(res, "Cập nhật thông tin người dùng thành công", updatedUser);
-    } catch (error) {                
+    } catch (error) {   
+        console.error(error)             
         if (error.message === "EMPLOYEE_NOT_FOUND" || error.message === "USER_NOT_FOUND") {
             return sendError(res, "Người dùng không tồn tại để cập nhật");
         }
-        return sendServerError(res, "Lỗi máy chủ khi cập nhật thông tin người dùng");
+        return sendServerError(res);
     }
 };
 
@@ -66,10 +69,11 @@ export const deleteUser = async (req, res) => {
         const deletedUser = await userService.ownerDeleteEmployee(userId);
         
         return sendSuccess(res, "Xóa người dùng thành công", deletedUser);
-    } catch (error) {                
+    } catch (error) {               
+           console.error(error) 
         if (error.message === "EMPLOYEE_NOT_FOUND" || error.message === "USER_NOT_FOUND") {
             return sendError(res, "Người dùng không tồn tại hoặc đã bị xóa trước đó");
         }
-        return sendServerError(res, "Lỗi máy chủ khi xóa người dùng");
+        return sendServerError(res);
     }
 };

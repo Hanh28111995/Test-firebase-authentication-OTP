@@ -13,7 +13,7 @@ export const employeeGetAllTasks = async (req, res) => {
     return sendSuccess(res, "Danh sách nhiệm vụ", tasks);
   } catch (error) {
     console.error("Lỗi getAllEmployeeTasks:", error.message);
-    return sendServerError(res, "Lỗi máy chủ khi lấy danh sách nhiệm vụ");
+    return sendServerError(res);
   }
 };
 
@@ -33,7 +33,7 @@ export const employeeGetTaskDetails = async (req, res) => {
     if (error.message === "FORBIDDEN_ACCESS") {
       return sendError(res, "Bạn không có quyền xem thông tin nhiệm vụ này");
     }
-    return sendServerError(res, "Lỗi máy chủ khi lấy thông tin nhiệm vụ");
+    return sendServerError(res);
   }
 };
 
@@ -54,7 +54,7 @@ export const employeeUpdateTask = async (req, res) => {
     if (error.message === "FORBIDDEN_ACTION") {
       return sendError(res, "Bạn không có quyền cập nhật nhiệm vụ này");
     }
-    return sendServerError(res, "Lỗi máy chủ khi cập nhật thông tin nhiệm vụ");
+    return sendServerError(res);
   }
 };
 
@@ -74,7 +74,7 @@ export const employeeDeleteTask = async (req, res) => {
     if (error.message === "FORBIDDEN_ACTION") {
       return sendError(res, "Bạn không có quyền xóa nhiệm vụ này");
     }
-    return sendServerError(res, "Lỗi máy chủ khi xóa nhiệm vụ");
+    return sendServerError(res);
   }
 };
 
@@ -116,6 +116,6 @@ export const employeeCreateTask = async (req, res) => {
     return sendSuccess(res, "Tạo nhiệm vụ thành công", newTask);
   } catch (error) {
     console.error("Lỗi createEmployeeTask:", error.message);
-    return sendServerError(res, "Lỗi máy chủ khi tạo nhiệm vụ");
+    return sendServerError(res);
   }
 };

@@ -1,22 +1,17 @@
 import * as authRepository from "../repositories/authRepository.js";
-import AuthList from "../models/permissionModel.js";
-import { bucket, auth as firebaseAuth } from "../config/Firebase.js"; 
+import { bucket, auth as firebaseAuth } from "../config/Firebase.js";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import axios from "axios";
 import { sendSuccess } from "../helper/response.js";
 import crypto from "crypto";
 
-
 const createJWT = async (user) => {
-  const permissionsFromDB = await AuthList.find({ allowedRoles: user.role });
-  const userPermissions = permissionsFromDB.map((item) => item.action);
   return jwt.sign(
     {
-      userId: user._id,
+      _id: user._id,
       userName: user.userName,
       role: user.role,
-      permissions: userPermissions,
     },
     process.env.JWT_SECRET_KEY,
     { expiresIn: "7d" },
@@ -24,25 +19,21 @@ const createJWT = async (user) => {
 };
 
 // LOGIC: SIGNIN OWNER (PHONE OTP AUTH)
-export const processLoginPhone = async (phoneNumber) => { 
+export const processLoginPhone = async (phoneNumber) => {
   try {
-    console.log(
-      "Khởi chạy processLoginPhone với SĐT:",
-      phoneNumber,
-    );    
+    console.log("Khởi chạy processLoginPhone với SĐT:", phoneNumber);
     const user = await authRepository.findUserByPhone(phoneNumber, "owner");
     if (!user) throw new Error("User does not exist trong hệ thống.");
-    
+
     let formattedPhone = phoneNumber.trim();
     if (formattedPhone.startsWith("0")) {
       formattedPhone = "+84" + formattedPhone.slice(1);
-    }    
-    console.log("✅ SĐT hợp lệ, gửi lại cho FE xử lý tiếp:", formattedPhone);    
+    }
+    console.log("✅ SĐT hợp lệ, gửi lại cho FE xử lý tiếp:", formattedPhone);
     return {
       success: true,
-      phoneNumber: formattedPhone 
+      phoneNumber: formattedPhone,
     };
-
   } catch (error) {
     console.error(error.message);
     throw error;
@@ -80,9 +71,9 @@ export const processCheckPhoneAccessCode = async (idToken) => {
   }
 
   await authRepository.updateAccessCode(user, decodedToken.uid);
-  const fbToken = await createJWT(user);
+  const JWTtoken = await createJWT(user);
 
-  return { user, loginToken: fbToken };
+  return { user, loginToken: JWTtoken };
 };
 
 // LOGIC: SIGNIN EMPLOYEE (EMAIL OTP AUTH)
@@ -119,7 +110,10 @@ export const processLoginEmail = async (email) => {
   };
 
   await transporter.sendMail(mailOptions);
-  return user.email;
+  return {
+    success: true,
+    email: user.email,
+  };
 };
 
 export const processCheckEmailAccessCode = async (email, accessCode) => {
@@ -137,8 +131,3 @@ export const processCheckEmailAccessCode = async (email, accessCode) => {
 
   return { user: userResponse, loginToken: fbToken };
 };
-
-
-
-
-
