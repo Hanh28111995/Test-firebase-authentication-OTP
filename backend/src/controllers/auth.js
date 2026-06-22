@@ -1,11 +1,10 @@
-// backend/controllers/authController.js
 import * as authService from "./../services/authService.js";
 import {
   sendSuccess,
   sendError,
   sendServerError,
 } from "./../helper/response.js";
-import User from "../models/userModel.js";
+import { getDB } from "../config/firebase.js";
 
 //Owner yêu cầu gửi mã OTP qua SMS
 export const loginPhone = async (req, res) => {
@@ -20,6 +19,7 @@ export const loginPhone = async (req, res) => {
     );
     return sendSuccess(res, "Xác thực user thành công", result);
   } catch (error) {
+    console.error(error)
     return sendServerError(res);
   }
 };
@@ -40,6 +40,7 @@ export const checkPhoneAccessCode = async (req, res) => {
       result,
     );
   } catch (error) {
+    console.error(error)
     return sendServerError(res);
   }
 };
@@ -55,6 +56,7 @@ export const loginEmail = async (req, res) => {
     const result = await authService.processLoginEmail(email);
       return sendSuccess(res, "Xác thực user thành công", result);
   } catch (error) {
+    console.error(error)
     return sendServerError(res);
   }
 };
@@ -108,11 +110,13 @@ export const signUpEmployee = async (req, res) => {
       result,
     );
   } catch (error) {
+    console.error(error)
     return sendServerError(res);
   }
 };
 
 export const activeAccount = async (req, res) => {
+  const db = getDB();
   try {
     const token = req.params.token || req.query.token;
     if (!token) {
@@ -121,19 +125,31 @@ export const activeAccount = async (req, res) => {
         "Mã kích hoạt không hợp lệ hoặc tài khoản đã được kích hoạt trước đó.",
       );
     }
-    const user = await User.findOne({ accessCode: token.trim() });
-    if (!user) {
+    
+    const tokenTrimmed = token.trim();
+    const snapshot = await db.collection("users")
+      .where("accessCode", "==", tokenTrimmed)
+      .limit(1)
+      .get();
+    if (snapshot.empty) {
       return sendError(
         res,
         "Mã kích hoạt không hợp lệ hoặc tài khoản đã được kích hoạt trước đó.",
       );
     }
+    const doc = snapshot.docs[0];
+    const userRef = db.collection("users").doc(doc.id);
+    
+    await userRef.update({
+      status: true,
+      accessCode: "",
+      updatedAt: new Date().toISOString()
+    });
 
-    user.status = true;
-    user.accessCode = "";
-    await user.save();
-    return sendSuccess(res, `Kích hoạt tài khoản ${user.userName} thành công!`);
+    const userData = doc.data();
+    return sendSuccess(res, `Kích hoạt tài khoản ${userData.userName} thành công!`);
   } catch (error) {
+    console.error(error);
     return sendServerError(res);
   }
 };

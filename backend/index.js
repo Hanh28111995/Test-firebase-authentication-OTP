@@ -9,7 +9,7 @@ import {
   checkRole
 } from "./src/middlewares/authMiddleware.js";
 import AUTHRouter from "./src/router/auth.js";
-import { initFirebase } from "./src/config/Firebase.js";
+import { initFirebase } from "./src/config/firebase.js";
 import { activeAccount } from "./src/controllers/auth.js";
 initFirebase(); 
 

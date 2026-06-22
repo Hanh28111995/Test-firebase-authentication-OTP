@@ -10,7 +10,7 @@ export const ownerGetAllTasks = async (req, res) => {
     const tasks = await taskService.ownerGetAllTasks();
     return sendSuccess(res, "Danh sách toàn bộ nhiệm vụ", tasks);
   } catch (error) {
-    console.error("Lỗi getAllTasks (Owner):", error.message);
+    console.error(error);
     return sendServerError(res);
   }
 };
@@ -22,8 +22,7 @@ export const ownerGetTaskDetails = async (req, res) => {
     const task = await taskService.ownerGetTaskDetails(taskId);
     return sendSuccess(res, "Thông tin chi tiết nhiệm vụ", task);
   } catch (error) {
-    console.error("Lỗi getTaskDetails (Owner):", error.message);
-
+    console.error(error);
     if (error.message === "TASK_NOT_FOUND") {
       return sendError(res, "Nhiệm vụ không tồn tại");
     }
@@ -42,8 +41,7 @@ export const ownerUpdateTask = async (req, res) => {
       updatedTask,
     );
   } catch (error) {
-    console.error("Lỗi updateTask (Owner):", error.message);
-
+    console.error(error);
     if (error.message === "TASK_NOT_FOUND") {
       return sendError(res, "Nhiệm vụ không tồn tại để cập nhật");
     }
@@ -58,8 +56,7 @@ export const ownerDeleteTask = async (req, res) => {
     const deletedTask = await taskService.ownerDeleteTask(taskId);
     return sendSuccess(res, "Xóa nhiệm vụ thành công", deletedTask);
   } catch (error) {
-    console.error("Lỗi deleteTask (Owner):", error.message);
-
+    console.error(error);
     if (error.message === "TASK_NOT_FOUND") {
       return sendError(res, "Nhiệm vụ không tồn tại hoặc đã bị xóa");
     }
@@ -102,7 +99,7 @@ export const ownerCreateTask = async (req, res) => {
     const newTask = await taskService.createTask(taskData, ownerId);
     return sendSuccess(res, "Tạo nhiệm vụ thành công", newTask);
   } catch (error) {
-    console.error("Lỗi createTask (Owner):", error.message);
+    console.error(error);
     return sendServerError(res);
   }
 };

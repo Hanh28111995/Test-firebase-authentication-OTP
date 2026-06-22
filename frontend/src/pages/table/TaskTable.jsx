@@ -1,56 +1,90 @@
-import React, { useState } from "react";
-import { Table, Button, Input, Tag, Space, Avatar } from "antd";
+import React, { useState, useEffect } from "react";
+import { Table, Button,  Tag, Space, Avatar, message, Modal } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import {
-  PlusOutlined,
-  SearchOutlined,
-} from "@ant-design/icons";
+  getAllTasksApi,
+  deleteTaskApi,  
+} from "../../services/role.task.service";
+import { useSelector } from "react-redux";
 import "./index.scss";
+import TaskForm from "../../components/Form/TaskForm";
 
-export default function TaskTable() {
-  const initialData = [
-    {
-      id: 1,
-      title: "Design Login Page",
-      projectName: "CRM System",
-      priority: "High",
-      status: "In Progress",
-      members: ["John", "Anna"],
-      endDate: "2026-06-25",
-    },
-    {
-      id: 2,
-      title: "Fix Payment Bug",
-      projectName: "E-Commerce",
-      priority: "High",
-      status: "Todo",
-      members: ["Mike"],
-      endDate: "2026-06-30",
-    },
-    {
-      id: 3,
-      title: "Update Dashboard",
-      projectName: "CRM System",
-      priority: "Medium",
-      status: "Done",
-      members: ["Tom", "Lucy"],
-      endDate: "2026-06-20",
-    },
-  ];
+export default function TaskTable() {  
+  const [dataSource, setDataSource] = useState([]);
+  const [rawTasks, setRawTasks] = useState([]);  
+  const [createForm, setCreateForm] = useState(false);  
+  const [editingTask, setEditingTask] = useState(null); 
+  
+  const [usersList, setUsersList] = useState([]);
 
-  const [searchText, setSearchText] = useState("");
-  const [dataSource, setDataSource] = useState(initialData);
+  const userRole = useSelector(
+    (state) => state.userReducer.userInfor?.user.role,
+  );
 
-  const handleSearch = (e) => {
-    const value = e.target.value;
-    setSearchText(value);
+  const fetchTasks = async () => {    
+    try {
+      const response = await getAllTasksApi(userRole);      
+      const tasksData = response?.content || response?.data || response || [];
+      const safeData = Array.isArray(tasksData) ? tasksData : [];
 
-    const filteredData = initialData.filter(
-      (item) =>
-        item.title.toLowerCase().includes(value.toLowerCase()) ||
-        item.projectName.toLowerCase().includes(value.toLowerCase())
-    );
+      setRawTasks(safeData);
+      setDataSource(safeData);
+    } catch (error) {
+      console.error("Lỗi lấy danh sách task:", error);
+      message.error("Không thể tải danh sách công việc.");
+      setRawTasks([]);
+      setDataSource([]);
+    }
+  };
 
-    setDataSource(filteredData);
+  useEffect(() => {
+    if (userRole) {
+      fetchTasks();
+    }
+  }, [userRole]);
+
+  const handleDeleteTask = async (taskId) => {
+    try {
+      const response = await deleteTaskApi(userRole, taskId);
+      if (response?.success || response) {
+        message.success("Xóa công việc thành công!");
+        fetchTasks();
+      }
+    } catch (error) {
+      console.error("Lỗi xóa task:", error);
+      message.error("Xóa công việc thất bại.");
+    }
+  };
+
+  const openCreateModal = () => {
+    setEditingTask(null);
+    setCreateForm(true);
+  };
+
+  const openEditModal = (record) => {
+    setEditingTask(record);
+    setCreateForm(true);
+  };
+
+  const handleFormSubmit = async (formData) => {    
+    try {
+      if (editingTask) {
+        // LUỒNG UPDATE TASK
+        // await updateTaskApi(userRole, editingTask._id, formData);
+        console.log("Gửi API Cập nhật Task ID:", editingTask._id, formData);
+        message.success("Cập nhật công việc thành công!");
+      } else {
+        // LUỒNG CREATE TASK
+        // await createTaskApi(userRole, formData);
+        console.log("Gửi API Tạo mới Task:", formData);
+        message.success("Tạo mới công việc thành công!");
+      }
+      setCreateForm(false); // Đóng modal
+      fetchTasks(); // Reload lại danh sách bảng
+    } catch (error) {
+      console.error("Lỗi xử lý Form Task:", error);
+      message.error("Thao tác thất bại.");
+    } 
   };
 
   const getPriorityColor = (priority) => {
@@ -94,9 +128,7 @@ export default function TaskTable() {
       key: "priority",
       width: "12%",
       render: (priority) => (
-        <Tag color={getPriorityColor(priority)}>
-          {priority}
-        </Tag>
+        <Tag color={getPriorityColor(priority)}>{priority}</Tag>
       ),
     },
     {
@@ -104,11 +136,7 @@ export default function TaskTable() {
       dataIndex: "status",
       key: "status",
       width: "15%",
-      render: (status) => (
-        <Tag color={getStatusColor(status)}>
-          {status}
-        </Tag>
-      ),
+      render: (status) => <Tag color={getStatusColor(status)}>{status}</Tag>,
     },
     {
       title: "Members",
@@ -117,11 +145,17 @@ export default function TaskTable() {
       width: "18%",
       render: (members) => (
         <Avatar.Group max={{ count: 3 }}>
-          {members.map((member) => (
-            <Avatar key={member}>
-              {member.charAt(0)}
-            </Avatar>
-          ))}
+          {Array.isArray(members) &&
+            members.map((member) => {
+              const name =
+                member?.userName || (typeof member === "string" ? member : "U");
+              const key = member?._id || name;
+              return (
+                <Avatar key={key} title={member?.email || ""}>
+                  {name.charAt(0).toUpperCase()}
+                </Avatar>
+              );
+            })}
         </Avatar.Group>
       ),
     },
@@ -130,6 +164,8 @@ export default function TaskTable() {
       dataIndex: "endDate",
       key: "endDate",
       width: "10%",
+      render: (date) =>
+        date ? new Date(date).toLocaleDateString("vi-VN") : "-",
     },
     {
       title: "Action",
@@ -137,21 +173,12 @@ export default function TaskTable() {
       width: "15%",
       render: (_, record) => (
         <Space>
-          <Button
-            type="primary"
-            onClick={() =>
-              console.log("Edit:", record.id)
-            }
-          >
+          {/* 🟢 SỬA TẠI ĐÂY: Bấm vào mở modal edit và truyền data hàng hiện tại */}
+          <Button type="primary" onClick={() => openEditModal(record)}>
             Edit
           </Button>
 
-          <Button
-            danger
-            onClick={() =>
-              console.log("Delete:", record.id)
-            }
-          >
+          <Button danger onClick={() => handleDeleteTask(record._id)}>
             Delete
           </Button>
         </Space>
@@ -160,46 +187,57 @@ export default function TaskTable() {
   ];
 
   return (
-    <div className="manage-task-container">
-      <h1 className="main-title">
-        Manage Tasks
-      </h1>
+    <>
+      <div className="manage-task-container">
+        <h1 className="main-title">Manage Tasks</h1>
 
-      <div className="task-card">
-        <div className="toolbar">
-          <div className="count-text">
-            <strong>
-              {dataSource.length} Tasks
-            </strong>
+        <div className="task-card">
+          <div className="toolbar">
+            <div className="count-text">
+              <strong>{dataSource?.length || 0} Tasks</strong>
+            </div>
+
+            <div className="right-actions">
+              <Button
+                type="primary"
+                ghost
+                icon={<PlusOutlined />}
+                className="create-btn"
+                onClick={() => setCreateForm(true)}
+              >
+                Create New Task
+              </Button>
+            </div>
           </div>
 
-          <div className="right-actions">
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              className="create-btn"
-            >
-              Create Task
-            </Button>
-
-            <Input
-              placeholder="Search Task"
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={handleSearch}
-              className="filter-input"
-            />
-          </div>
+          <Table
+            rowKey="_id"
+            columns={columns}
+            dataSource={dataSource}
+            pagination={{ pageSize: 10 }}
+            className="task-table"
+          />
         </div>
-
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={dataSource}
-          pagination={false}
-          className="task-table"
-        />
       </div>
-    </div>
+
+      <Modal
+        title={
+          editingTask
+            ? "Chỉnh sửa công việc (Edit Issue)"
+            : "Tạo công việc mới (Create Issue)"
+        }
+        open={createForm}
+        onCancel={() => setCreateForm(false)}
+        footer={null}
+        width={1000}
+        destroyOnHidden
+      >
+        <TaskForm
+          initialValues={editingTask}
+          onSubmit={handleFormSubmit}          
+          usersList={usersList} // Truyền danh sách nhân viên vào form
+        />
+      </Modal>
+    </>
   );
 }

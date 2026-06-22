@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Tag, Space, Modal, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import UserForm from "../../components/UserForm/UserForm";
+import UserForm from "../../components/Form/UserForm.jsx";
 import {
   createUserApi,
   deleteUserApi,

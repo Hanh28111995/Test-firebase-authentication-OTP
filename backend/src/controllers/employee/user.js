@@ -11,6 +11,7 @@ export const getEmployeeProfile = async (req, res) => {
     const user = await userService.getProfile(employeeId);
     return sendSuccess(res, "Thông tin người dùng cá nhân", user);
   } catch (error) {
+    console.error(error)
     if (error.message === "EMPLOYEE_NOT_FOUND") {
       return sendError(res, "Người dùng không tồn tại");
     }
@@ -32,6 +33,7 @@ export const updateEmployeeDetails = async (req, res) => {
       updatedUser,
     );
   } catch (error) {
+    console.error(error)
     if (error.message === "EMPLOYEE_NOT_FOUND") {
       return sendError(res, "Người dùng không tồn tại hoặc cập nhật thất bại");
     }

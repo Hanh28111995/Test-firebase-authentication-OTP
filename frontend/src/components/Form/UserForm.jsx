@@ -28,13 +28,10 @@ export default function UserForm({ onSuccess, editingEmployee }) {
     }
 
     if (response?.success) {
-      message.success(isEditMode ? "Cập nhật nhân viên thành công!" : "Tạo nhân viên mới thành công!");                
-      
-      // 🟢 ĐƯA VỀ DEFAULT: Xóa sạch toàn bộ form, đưa các field về trạng thái ban đầu
-      form.resetFields();
-      
+      message.success(isEditMode ? "Cập nhật nhân viên thành công!" : "Tạo nhân viên mới thành công!");                            
+      form.resetFields();      
       if (onSuccess) {
-        onSuccess(); // Gọi hàm đóng Modal ở file cha
+        onSuccess(); 
       }
     } else {
       message.error(response?.message || (isEditMode ? "Cập nhật thất bại." : "Tạo nhân viên thất bại."));

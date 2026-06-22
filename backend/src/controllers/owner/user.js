@@ -40,7 +40,8 @@ export const getUserDetails = async (req, res) => {
         const user = await userService.getProfile(userId); // Gọi hàm lấy chi tiết từ service
         
         return sendSuccess(res, "Thông tin người dùng", user);
-    } catch (error) {                
+    } catch (error) {       
+        console.error(error)         
         if (error.message === "EMPLOYEE_NOT_FOUND" || error.message === "USER_NOT_FOUND") {
             return sendError(res, "Người dùng không tồn tại");
         }

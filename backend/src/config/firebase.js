@@ -1,14 +1,19 @@
+import admin from "firebase-admin"; 
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getStorage } from "firebase-admin/storage";
 import { getAuth } from "firebase-admin/auth";
-import fs from "fs";
+import { getFirestore } from "firebase-admin/firestore"; 
+import { defaultOwner } from "../constants/default.js";
 import path from "path";
+import fs from "fs";
 
-let auth = null;
+// 🟢 1. ĐƯA LÊN TRÊN CÙNG: Khai báo toàn cục để export ra cho các file Repository sử dụng
+let db = null;
 let bucket = null;
+let auth = null;
 
-export const initFirebase = () => {
-  const firebase_cf = process.env.FIREBASE_CONFIG ;    
+export const initFirebase = async () => {
+  const firebase_cf = process.env.FIREBASE_CONFIG;    
   let app = null;
 
   try {
@@ -19,7 +24,7 @@ export const initFirebase = () => {
     if (getApps().length === 0) {
       let serviceAccount;
 
-      if (firebase_cf.startsWith("{")) {
+      if (firebase_cf.trim().startsWith("{")) {
         serviceAccount = JSON.parse(firebase_cf);
       } else {
         const resolvedPath = path.resolve(process.cwd(), firebase_cf);
@@ -41,7 +46,22 @@ export const initFirebase = () => {
 
     if (app) {
       bucket = getStorage(app).bucket();
-      auth = getAuth(app);
+      auth = getAuth(app);      
+      
+      // 🟢 2. SỬA TẠI ĐÂY: Bỏ chữ "const", gán trực tiếp vào biến toàn cục đã khai báo ở trên
+      db = getFirestore(app); 
+      
+      const usersRef = db.collection("users");            
+      const snapshot = await usersRef.limit(1).get();
+
+      if (snapshot.empty) {
+        await usersRef.add({
+          ...defaultOwner,
+          status: true,
+          createdAt: new Date().toISOString()
+        });
+        console.log("👉 Bộ sưu tập users trống. Đã khởi tạo tài khoản Owner mặc định thành công!");
+      }
     }
 
   } catch (error) {
@@ -50,4 +70,6 @@ export const initFirebase = () => {
   }
 };
 
-export { bucket, auth };
+export const getDB = () => db; 
+export const getAuthService = () => auth;
+export const getBucket = () => bucket;

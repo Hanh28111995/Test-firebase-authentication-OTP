@@ -1,10 +1,7 @@
 import * as authRepository from "../repositories/authRepository.js";
-import { bucket, auth as firebaseAuth } from "../config/Firebase.js";
+import { getAuthService } from "../config/Firebase.js"; 
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
-import axios from "axios";
-import { sendSuccess } from "../helper/response.js";
-import crypto from "crypto";
 
 const createJWT = async (user) => {
   return jwt.sign(
@@ -41,14 +38,17 @@ export const processLoginPhone = async (phoneNumber) => {
 };
 
 export const processCheckPhoneAccessCode = async (idToken) => {
-  // Kiểm tra biến auth từ cấu hình Firebase Admin SDK đã khởi tạo chưa
+  // 🟢 THAY ĐỔI: Gọi hàm Getter để lấy thực thể Firebase Auth tươi mới từ RAM
+  const firebaseAuth = getAuthService();
+
+  // Kiểm tra xem thực thể kết nối Firebase Admin SDK đã sẵn sàng chưa
   if (!firebaseAuth) {
     throw new Error("FIREBASE_NOT_INITIALIZED");
   }
 
   let decodedToken;
   try {
-    // Xác thực token do Firebase cấp từ phía Client gửi lên
+    // Xác thực token do Firebase cấp từ phía Client gửi lên bằng thực thể vừa lấy
     decodedToken = await firebaseAuth.verifyIdToken(idToken);
   } catch (firebaseError) {
     console.error("Firebase Token Verification Failed:", firebaseError.message);
@@ -77,7 +77,6 @@ export const processCheckPhoneAccessCode = async (idToken) => {
 };
 
 // LOGIC: SIGNIN EMPLOYEE (EMAIL OTP AUTH)
-
 export const processLoginEmail = async (email) => {
   const user = await authRepository.findUserByEmail(email, "employee");
   if (!user) throw new Error("NOT_FOUND_EMPLOYEE");
@@ -125,7 +124,7 @@ export const processCheckEmailAccessCode = async (email, accessCode) => {
   await authRepository.updateAccessCode(user, "");
   const fbToken = await createJWT(user);
 
-  const userResponse = user.toObject();
+  const userResponse = { ...user };
   delete userResponse.password;
   delete userResponse.accessCode;
 

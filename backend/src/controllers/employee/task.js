@@ -3,16 +3,16 @@ import {
   sendError,
   sendServerError,
 } from "../../helper/response.js";
-import * as taskService from "./../../services/taskService.js"; 
+import * as taskService from "./../../services/taskService.js";
 
 export const employeeGetAllTasks = async (req, res) => {
   try {
     const employeeId = req.user._id;
 
-    const tasks = await taskService.employeeGetAllTasks(employeeId);    
+    const tasks = await taskService.employeeGetAllTasks(employeeId);
     return sendSuccess(res, "Danh sách nhiệm vụ", tasks);
   } catch (error) {
-    console.error("Lỗi getAllEmployeeTasks:", error.message);
+    console.error(error);
     return sendServerError(res);
   }
 };
@@ -25,8 +25,7 @@ export const employeeGetTaskDetails = async (req, res) => {
     const task = await taskService.employeeGetTaskDetails(taskId, employeeId);
     return sendSuccess(res, "Thông tin nhiệm vụ", task);
   } catch (error) {
-    console.error("Lỗi getEmployeeTaskDetails:", error.message);
-
+    console.error(error);
     if (error.message === "TASK_NOT_FOUND") {
       return sendError(res, "Nhiệm vụ không tồn tại");
     }
@@ -43,10 +42,18 @@ export const employeeUpdateTask = async (req, res) => {
     const employeeId = req.user._id;
     const updateData = req.body;
 
-    const updatedTask = await taskService.employeeUpdateTask(taskId, employeeId, updateData);
-    return sendSuccess(res, "Cập nhật thông tin nhiệm vụ thành công", updatedTask);
+    const updatedTask = await taskService.employeeUpdateTask(
+      taskId,
+      employeeId,
+      updateData,
+    );
+    return sendSuccess(
+      res,
+      "Cập nhật thông tin nhiệm vụ thành công",
+      updatedTask,
+    );
   } catch (error) {
-    console.error("Lỗi updateEmployeeTask:", error.message);
+    console.error(error);
 
     if (error.message === "TASK_NOT_FOUND") {
       return sendError(res, "Nhiệm vụ không tồn tại");
@@ -66,7 +73,7 @@ export const employeeDeleteTask = async (req, res) => {
     await taskService.employeeDeleteTask(taskId, employeeId);
     return sendSuccess(res, "Xóa nhiệm vụ thành công");
   } catch (error) {
-    console.error("Lỗi deleteEmployeeTask:", error.message);
+    console.error(error);
 
     if (error.message === "TASK_NOT_FOUND") {
       return sendError(res, "Nhiệm vụ không tồn tại");
@@ -109,13 +116,13 @@ export const employeeCreateTask = async (req, res) => {
       endDate: endDate || null,
       shift: shift || "",
       members: members || [],
-    };    
-    const userId = req.user._id;     
+    };
+    const userId = req.user._id;
     const newTask = await taskService.createTask(taskData, userId);
 
     return sendSuccess(res, "Tạo nhiệm vụ thành công", newTask);
   } catch (error) {
-    console.error("Lỗi createEmployeeTask:", error.message);
+    console.error(error);
     return sendServerError(res);
   }
 };

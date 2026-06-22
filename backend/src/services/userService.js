@@ -3,31 +3,25 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 
 export const getProfile = async (employeeId) => {
-  const employee = await User.findById(employeeId).select("-accessCode");
+  const employee = await User.findById(employeeId);
   if (!employee) throw new Error("EMPLOYEE_NOT_FOUND");
   return employee;
 };
 
 export const updateProfile = async (employeeId, updateData) => {
-  const updatedEmployee = await User.updateById(
-    employeeId,
-    { $set: updateData },
-    { new: true, runValidators: true },
-  ).select("-accessCode");
-
+  const updatedEmployee = await User.updateById(employeeId, updateData);  
   if (!updatedEmployee) throw new Error("EMPLOYEE_NOT_FOUND");
   return updatedEmployee;
 };
 
 export const ownerCreateEmployee = async (bodyData) => {
-  const { userName, phoneNumber, role, email, department, address } = bodyData;
+  const { userName, phoneNumber, role, email, address, status } = bodyData;
 
   // 1. Kiểm tra xem Email hoặc Số điện thoại đã tồn tại trong DB chưa
   const existedUser = await User.findUserByEmailOrPhone({
     email,
     phoneNumber,
-    }
-  );
+  });
   if (existedUser) {
     throw new Error("EMAIL_OR_PHONE_ALREADY_EXISTS");
   }
@@ -38,8 +32,8 @@ export const ownerCreateEmployee = async (bodyData) => {
     phoneNumber,
     role,
     email,
-    department,
     address,
+    status: status || false,
     accessCode: activationToken,
   });
 
@@ -74,9 +68,8 @@ export const ownerCreateEmployee = async (bodyData) => {
   };
   await transporter.sendMail(mailOptions);
   console.log(`Đã gửi mail kèm link kích hoạt thành công tới: ${email}`);
-  return {    
+  return {
     userName,
-    department,
     isActived: false,
   };
 };
@@ -85,13 +78,8 @@ export const ownerGetAllEmployees = async () => {
   return await User.findAll();
 };
 
-export const ownerUpdateEmployee = async (employeeId, updateData) => {
-  const updatedEmployee = await User.updateById(
-    employeeId,
-    { $set: updateData },
-    { new: true, runValidators: true },
-  );
-
+export const ownerUpdateEmployee = async (employeeId, updateData) => {    
+  const updatedEmployee = await User.updateById(employeeId, updateData);  
   if (!updatedEmployee) throw new Error("EMPLOYEE_NOT_FOUND");
   return updatedEmployee;
 };

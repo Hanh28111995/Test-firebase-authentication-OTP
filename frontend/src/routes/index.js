@@ -7,7 +7,7 @@ import TaskTable from "../pages/table/TaskTable";
 import Login from "../pages/auth/Login";
 import EmployeeTable from "../pages/table/EmployeeTable";
 import MainLayout from "../components/Layout/MainLayout";
-import ActiveAcc from "../pages/table/activeAcc/ActiveAcc";
+import ActiveAcc from "../pages/activeAcc/ActiveAcc";
 
 export default function Router() {
   const routing = useRoutes([

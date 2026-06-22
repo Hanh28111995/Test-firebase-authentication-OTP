@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Result, Button, Spin } from "antd";
-import axios from "axios"; // Hoặc import instance axios chung của dự án bạn (ví dụ: "../../services/axiosClient")
+import { confirmUserApi } from "../../services/owner.user.service";
 import "./index.scss";
-import { confirmUserApi } from "../../../services/owner.user.service";
 
 export default function ActiveAcc() {
   const [searchParams] = useSearchParams();
