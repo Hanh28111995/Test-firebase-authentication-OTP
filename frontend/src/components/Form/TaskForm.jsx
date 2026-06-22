@@ -22,34 +22,45 @@ import { createTaskApi, updateTaskApi } from "../../services/role.task.service";
 const { Option } = Select;
 const { TextArea } = Input;
 
-export default function TaskForm({ editingTask, onSuccess }) {
+export default function TaskForm({ editingTask, onSuccess, userList, role }) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const isEditMode = !!editingTask;
 
   useEffect(() => {
-    if (editingTask) {
+    if (editingTask && Array.isArray(userList)) {      
+      const initialMemberIds = Array.isArray(editingTask.members)
+        ? editingTask.members.map(m => typeof m === "object" ? m._id : m)
+        : [];
+
       form.setFieldsValue({
         ...editingTask,
-        startDate: editingTask.startDate
-          ? dayjs(editingTask.startDate)
-          : dayjs(),
+        members: initialMemberIds, // Gán mảng chuỗi ID [ "id1", "id2" ] -> Select sẽ tự hiển thị đúng tên người dùng
+        startDate: editingTask.startDate ? dayjs(editingTask.startDate) : dayjs(),
         endDate: editingTask.endDate ? dayjs(editingTask.endDate) : null,
       });
     } else {
       form.resetFields();
     }
-  }, [editingTask]);
+  }, [editingTask, userList, form]); 
 
   const handleFinish = async (values) => {
     setLoading(true);
-    try {
+    try {      
+      const payload = {
+        ...values,
+        startDate: values.startDate ? values.startDate.toISOString() : new Date().toISOString(),
+        endDate: values.endDate ? values.endDate.toISOString() : null,        
+        members: Array.isArray(values.members) ? values.members : []
+      };
+
       let response;
       if (isEditMode) {
-        response = await updateTaskApi(editingTask._id, values);
+        response = await updateTaskApi(role, editingTask._id, payload);
       } else {
-        response = await createTaskApi(values);
+        response = await createTaskApi(role, payload);
       }
+
       if (response?.success) {
         message.success(
           isEditMode ? "Cập nhật task thành công!" : "Tạo task mới thành công!",
@@ -65,7 +76,7 @@ export default function TaskForm({ editingTask, onSuccess }) {
         );
       }
     } catch (error) {
-      console.error("Lỗi xử lý nhân viên:", error);
+      console.error("Lỗi xử lý task:", error);
       message.error(
         error?.response?.data?.message || "Đã xảy ra lỗi hệ thống.",
       );
@@ -174,7 +185,17 @@ export default function TaskForm({ editingTask, onSuccess }) {
             </Form.Item>
 
             <Form.Item name="shift" label="Ca làm việc (Shift)">
-              <Input placeholder="Ví dụ: Ca sáng, Ca gãy..." />
+              <Select placeholder="Chọn ca làm">
+                <Option value="Day Shift">
+                  <span>Ca sáng - 8h</span>
+                </Option>
+                <Option value="Night Shift">
+                  <span>Ca tối - 8h</span>
+                </Option>
+                <Option value="Half Shift">
+                  <span>Ca gãy - 4h</span>
+                </Option>
+              </Select>
             </Form.Item>
 
             <Form.Item
@@ -206,11 +227,11 @@ export default function TaskForm({ editingTask, onSuccess }) {
                 placeholder="Chọn người thực hiện..."
                 optionFilterProp="children"
               >
-                {usersList.map((user) => (
-                  <Option key={user._id} value={user._id}>
+                {userList.map((user) => (
+                  <Option key={user?._id} value={user._id}>
                     <Space>
                       <UserOutlined />
-                      {user.userName || user.email}
+                      {user.userName}
                     </Space>
                   </Option>
                 ))}

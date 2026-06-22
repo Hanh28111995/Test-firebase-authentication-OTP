@@ -15,7 +15,7 @@ export default function EmployeeTable() {
   const [createForm, setCreateForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
 
-  // Hàm gọi API lấy danh sách
+  
   const fetchEmployeeList = async () => {
     try {
       const res = await getAllUserApi();

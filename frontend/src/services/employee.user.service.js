@@ -7,6 +7,13 @@ const getProfileApi = () => {
   });
 };
 
+const getUserListByEmployeeApi = () => {
+  return request({
+    url: `/api/employee/user/get-all-employees`,
+    method: "GET",
+  });
+};
+
 const updateProfileApi = (data) => {
   return request({
     url: `/api/employee/user/update`,
@@ -15,4 +22,4 @@ const updateProfileApi = (data) => {
   });
 };
 
-export { getProfileApi, updateProfileApi };
+export { getProfileApi, updateProfileApi, getUserListByEmployeeApi };

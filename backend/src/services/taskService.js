@@ -78,8 +78,11 @@ export const ownerDeleteTask = async (taskId) => {
 };
 
 export const employeeGetAllTasks = async (employeeId) => {
-  const tasks = await taskRepo.findAll({ members: employeeId });
-  return await populateTaskUsers(tasks);
+  const tasks = await taskRepo.findAll({});
+ const employeeTasks = tasks.filter((item) => 
+  item.createdBy === employeeId || item.members?.includes(employeeId)
+);
+  return await populateTaskUsers(employeeTasks);
 };
 
 export const employeeGetTaskDetails = async (taskId, employeeId) => {
@@ -96,7 +99,7 @@ export const employeeUpdateTask = async (taskId, employeeId, updateData) => {
   if (!task) throw new Error("TASK_NOT_FOUND");
 
   if (task.createdBy !== employeeId) {
-    throw new Error("FORBIDDEN_ACTION");
+    throw new Error("Employee's unable to update tanks of other");
   }
 
   const actualData = updateData.updateData ? updateData.updateData : updateData;

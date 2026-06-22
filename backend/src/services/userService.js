@@ -9,9 +9,20 @@ export const getProfile = async (employeeId) => {
 };
 
 export const updateProfile = async (employeeId, updateData) => {
-  const updatedEmployee = await User.updateById(employeeId, updateData);  
+  const updatedEmployee = await User.updateById(employeeId, updateData);
   if (!updatedEmployee) throw new Error("EMPLOYEE_NOT_FOUND");
   return updatedEmployee;
+};
+
+export const employeeGetAllEmployees = async () => {
+  const data = await User.findAll();
+  const employeeList = data
+    .filter((user) => user.role === "employee")
+    .map((user) => ({
+      _id: user._id,
+      userName: user.userName,
+    }));
+  return employeeList;
 };
 
 export const ownerCreateEmployee = async (bodyData) => {
@@ -78,8 +89,8 @@ export const ownerGetAllEmployees = async () => {
   return await User.findAll();
 };
 
-export const ownerUpdateEmployee = async (employeeId, updateData) => {    
-  const updatedEmployee = await User.updateById(employeeId, updateData);  
+export const ownerUpdateEmployee = async (employeeId, updateData) => {
+  const updatedEmployee = await User.updateById(employeeId, updateData);
   if (!updatedEmployee) throw new Error("EMPLOYEE_NOT_FOUND");
   return updatedEmployee;
 };

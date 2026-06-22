@@ -1,5 +1,5 @@
 import * as authRepository from "../repositories/authRepository.js";
-import { getAuthService } from "../config/Firebase.js"; 
+import { getAuthService } from "../config/firebase.js"; 
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 
@@ -37,42 +37,32 @@ export const processLoginPhone = async (phoneNumber) => {
   }
 };
 
-export const processCheckPhoneAccessCode = async (idToken) => {
-  // 🟢 THAY ĐỔI: Gọi hàm Getter để lấy thực thể Firebase Auth tươi mới từ RAM
-  const firebaseAuth = getAuthService();
-
-  // Kiểm tra xem thực thể kết nối Firebase Admin SDK đã sẵn sàng chưa
+export const processCheckPhoneAccessCode = async (idToken) => {  
+  const firebaseAuth = getAuthService();  
   if (!firebaseAuth) {
     throw new Error("FIREBASE_NOT_INITIALIZED");
   }
-
   let decodedToken;
-  try {
-    // Xác thực token do Firebase cấp từ phía Client gửi lên bằng thực thể vừa lấy
+  try {    
     decodedToken = await firebaseAuth.verifyIdToken(idToken);
   } catch (firebaseError) {
     console.error("Firebase Token Verification Failed:", firebaseError.message);
     throw new Error("INVALID_FIREBASE_TOKEN");
   }
-
   const firebasePhoneNumber = decodedToken.phone_number;
   if (!firebasePhoneNumber) {
     throw new Error("NO_PHONE_NUMBER_IN_TOKEN");
   }
-
   let formattedPhone = firebasePhoneNumber;
   if (firebasePhoneNumber.startsWith("+84")) {
     formattedPhone = "0" + firebasePhoneNumber.slice(3);
   }
-
   const user = await authRepository.findUserByPhone(formattedPhone, "owner");
   if (!user) {
     throw new Error("DB_OWNER_NOT_MATCH");
   }
-
   await authRepository.updateAccessCode(user, decodedToken.uid);
   const JWTtoken = await createJWT(user);
-
   return { user, loginToken: JWTtoken };
 };
 

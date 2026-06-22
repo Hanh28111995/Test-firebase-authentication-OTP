@@ -1,33 +1,54 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button,  Tag, Space, Avatar, message, Modal } from "antd";
+import { Table, Button, Tag, Space, Avatar, message, Modal } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import {
   getAllTasksApi,
-  deleteTaskApi,  
+  deleteTaskApi,
 } from "../../services/role.task.service";
 import { useSelector } from "react-redux";
 import "./index.scss";
 import TaskForm from "../../components/Form/TaskForm";
+import { getUserListByEmployeeApi } from "../../services/employee.user.service";
+import { getAllUserApi } from "../../services/owner.user.service";
 
-export default function TaskTable() {  
+export default function TaskTable() {
   const [refreshToggle, setRefreshToggle] = useState(false);
-  const [dataSource, setDataSource] = useState([]);  
-  const [createForm, setCreateForm] = useState(false);  
-  const [editingTask, setEditingTask] = useState(null);   
+  const [dataSource, setDataSource] = useState([]);
+  const [createForm, setCreateForm] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [userList, setUserList] = useState(null);
 
   const userRole = useSelector(
-    (state) => state.userReducer.userInfor?.user.role,
+    (state) =>
+      state.userReducer.userInfor?.role ||
+      state.userReducer.userInfor?.user.role,
   );
 
-  const fetchTasks = async () => {    
+  const userID = useSelector(
+    (state) =>
+      state.userReducer.userInfor?._id || state.userReducer.userInfor?.user._id,
+  );
+
+  const fetchTasks = async () => {
     try {
-      const response = await getAllTasksApi(userRole);          
-      const tasksData = response?.content ;
+      let getUsers = userList;
+      if (userRole === "owner") {
+        getUsers = await getAllUserApi();
+      } else {
+        getUsers = await getUserListByEmployeeApi();
+      }
+      const IDvsNameUsers = getUsers?.content.map((user) => ({
+        _id: user._id,
+        userName: user.userName,
+      }));
+      setUserList(IDvsNameUsers);
+      const getTasks = await getAllTasksApi(userRole);
+      const tasksData = getTasks?.content;
       const safeData = Array.isArray(tasksData) ? tasksData : [];
       setDataSource(safeData);
     } catch (error) {
-      console.error("Lỗi lấy danh sách task:", error);
-      message.error("Không thể tải danh sách công việc.");      
+      message.error("Không thể tải danh sách user/task.");
+      console.error(error);
       setDataSource([]);
     }
   };
@@ -36,7 +57,7 @@ export default function TaskTable() {
     if (userRole) {
       fetchTasks();
     }
-  }, [userRole, refreshToggle]);
+  }, [refreshToggle]);
 
   const handleDeleteTask = async (taskId) => {
     try {
@@ -59,27 +80,6 @@ export default function TaskTable() {
   const openEditModal = (record) => {
     setEditingTask(record);
     setCreateForm(true);
-  };
-
-  const handleFormSubmit = async (formData) => {    
-    try {
-      if (editingTask) {
-        // LUỒNG UPDATE TASK
-        // await updateTaskApi(userRole, editingTask._id, formData);
-        console.log("Gửi API Cập nhật Task ID:", editingTask._id, formData);
-        message.success("Cập nhật công việc thành công!");
-      } else {
-        // LUỒNG CREATE TASK
-        // await createTaskApi(userRole, formData);
-        console.log("Gửi API Tạo mới Task:", formData);
-        message.success("Tạo mới công việc thành công!");
-      }
-      setCreateForm(false); // Đóng modal
-      fetchTasks(); // Reload lại danh sách bảng
-    } catch (error) {
-      console.error("Lỗi xử lý Form Task:", error);
-      message.error("Thao tác thất bại.");
-    } 
   };
 
   const getPriorityColor = (priority) => {
@@ -166,18 +166,23 @@ export default function TaskTable() {
       title: "Action",
       key: "action",
       width: "15%",
-      render: (_, record) => (
-        <Space>
-          {/* 🟢 SỬA TẠI ĐÂY: Bấm vào mở modal edit và truyền data hàng hiện tại */}
-          <Button type="primary" onClick={() => openEditModal(record)}>
-            Edit
-          </Button>
-
-          <Button danger onClick={() => handleDeleteTask(record._id)}>
-            Delete
-          </Button>
-        </Space>
-      ),
+      render: (_, record) => {        
+        const isCreator = userID === record.createdBy;
+        return (
+          <Space>
+            <Button type="primary" onClick={() => openEditModal(record)}>
+              Edit
+            </Button>
+            <Button
+              danger
+              onClick={() => handleDeleteTask(record._id)}
+              disabled={!isCreator} 
+            >
+              Delete
+            </Button>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -228,11 +233,12 @@ export default function TaskTable() {
         destroyOnHidden
       >
         <TaskForm
+          role={userRole}
           editingTask={editingTask}
-          onSuccess={()=>{
-            setCreateForm(false)
+          userList={userList}
+          onSuccess={() => {
+            setCreateForm(false);
             fetchTasks();
-            userList
           }}
         />
       </Modal>
