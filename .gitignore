@@ -1,4 +1,7 @@
-.env
-.vscode/
-.vscode/
-.DS_Store
+/backend/.env
+/backend/node_modules
+/backend/firebase-config.json
+/frontend/.env
+/frontend/build
+/frontend/node_modules
+
