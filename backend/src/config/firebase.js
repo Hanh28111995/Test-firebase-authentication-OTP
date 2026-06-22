@@ -7,7 +7,6 @@ import { defaultOwner } from "../constants/default.js";
 import path from "path";
 import fs from "fs";
 
-// 🟢 1. ĐƯA LÊN TRÊN CÙNG: Khai báo toàn cục để export ra cho các file Repository sử dụng
 let db = null;
 let bucket = null;
 let auth = null;
@@ -46,9 +45,7 @@ export const initFirebase = async () => {
 
     if (app) {
       bucket = getStorage(app).bucket();
-      auth = getAuth(app);      
-      
-      // 🟢 2. SỬA TẠI ĐÂY: Bỏ chữ "const", gán trực tiếp vào biến toàn cục đã khai báo ở trên
+      auth = getAuth(app);          
       db = getFirestore(app); 
       
       const usersRef = db.collection("users");            
@@ -60,7 +57,7 @@ export const initFirebase = async () => {
           status: true,
           createdAt: new Date().toISOString()
         });
-        console.log("👉 Bộ sưu tập users trống. Đã khởi tạo tài khoản Owner mặc định thành công!");
+        console.log("Table users trống. Đã khởi tạo tài khoản Owner mặc định thành công!");
       }
     }
 
