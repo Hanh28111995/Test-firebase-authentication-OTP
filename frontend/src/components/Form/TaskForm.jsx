@@ -18,40 +18,60 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-
+import { createTaskApi, updateTaskApi } from "../../services/role.task.service";
 const { Option } = Select;
 const { TextArea } = Input;
-export default function TaskForm({
-  initialValues,
-  onSubmit,
-  loading,
-  usersList = [],
-}) {
+
+export default function TaskForm({ editingTask, onSuccess }) {
   const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const isEditMode = !!editingTask;
 
   useEffect(() => {
-    if (initialValues) {
+    if (editingTask) {
       form.setFieldsValue({
-        ...initialValues,
-        startDate: initialValues.startDate
-          ? dayjs(initialValues.startDate)
+        ...editingTask,
+        startDate: editingTask.startDate
+          ? dayjs(editingTask.startDate)
           : dayjs(),
-        endDate: initialValues.endDate ? dayjs(initialValues.endDate) : null,
+        endDate: editingTask.endDate ? dayjs(editingTask.endDate) : null,
       });
     } else {
       form.resetFields();
     }
-  }, [initialValues, form]);
+  }, [editingTask]);
 
-  const handleFinish = (values) => {
-    const formattedValues = {
-      ...values,
-      startDate: values.startDate
-        ? values.startDate.toISOString()
-        : new Date().toISOString(),
-      endDate: values.endDate ? values.endDate.toISOString() : null,
-    };
-    onSubmit(formattedValues);
+  const handleFinish = async (values) => {
+    setLoading(true);
+    try {
+      let response;
+      if (isEditMode) {
+        response = await updateTaskApi(editingTask._id, values);
+      } else {
+        response = await createTaskApi(values);
+      }
+      if (response?.success) {
+        message.success(
+          isEditMode ? "Cập nhật task thành công!" : "Tạo task mới thành công!",
+        );
+        form.resetFields();
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        message.error(
+          response?.message ||
+            (isEditMode ? "Cập nhật task thất bại." : "Tạo task thất bại."),
+        );
+      }
+    } catch (error) {
+      console.error("Lỗi xử lý nhân viên:", error);
+      message.error(
+        error?.response?.data?.message || "Đã xảy ra lỗi hệ thống.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -59,18 +79,11 @@ export default function TaskForm({
       form={form}
       layout="vertical"
       onFinish={handleFinish}
-      initialValues={{
-        priority: "Medium",
-        status: "Todo",
-        startDate: dayjs(),
-        shift: "",
-        members: [],
-      }}
+      requiredMark={false}
       className="jira-task-form"
       style={{ padding: "12px 0" }}
     >
       <Row gutter={24}>
-        {/* ================= CỘT TRÁI: NỘI DUNG CHÍNH (MAIN CONTENT) ================= */}
         <Col xs={24} lg={16}>
           <Form.Item
             name="projectName"
@@ -106,7 +119,7 @@ export default function TaskForm({
           </Form.Item>
         </Col>
 
-        {/* ================= CỘT PHẢI: THÔNG TIN PHỤ / PHÂN LOẠI (ATTRIBUTES) ================= */}
+        {/* ================= CỘT PHẢI================= */}
         <Col xs={24} lg={8}>
           <div
             style={{
@@ -214,7 +227,7 @@ export default function TaskForm({
         <Space>
           <Button onClick={() => form.resetFields()}>Xóa nhập liệu</Button>
           <Button type="primary" htmlType="submit" loading={loading}>
-            {initialValues ? "Cập nhật Task" : "Tạo mới Task"}
+            {editingTask ? "Cập nhật Task" : "Tạo mới Task"}
           </Button>
         </Space>
       </Row>

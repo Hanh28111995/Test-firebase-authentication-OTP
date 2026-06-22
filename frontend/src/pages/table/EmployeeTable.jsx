@@ -27,7 +27,7 @@ export default function EmployeeTable() {
 
   useEffect(() => {
     fetchEmployeeList();
-  }, [refreshToggle]); //
+  }, [refreshToggle]); 
 
   // Hàm xóa nhân viên
   const handleDeleteEmployee = async (id) => {

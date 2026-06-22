@@ -10,12 +10,10 @@ import "./index.scss";
 import TaskForm from "../../components/Form/TaskForm";
 
 export default function TaskTable() {  
-  const [dataSource, setDataSource] = useState([]);
-  const [rawTasks, setRawTasks] = useState([]);  
+  const [refreshToggle, setRefreshToggle] = useState(false);
+  const [dataSource, setDataSource] = useState([]);  
   const [createForm, setCreateForm] = useState(false);  
-  const [editingTask, setEditingTask] = useState(null); 
-  
-  const [usersList, setUsersList] = useState([]);
+  const [editingTask, setEditingTask] = useState(null);   
 
   const userRole = useSelector(
     (state) => state.userReducer.userInfor?.user.role,
@@ -23,16 +21,13 @@ export default function TaskTable() {
 
   const fetchTasks = async () => {    
     try {
-      const response = await getAllTasksApi(userRole);      
-      const tasksData = response?.content || response?.data || response || [];
+      const response = await getAllTasksApi(userRole);          
+      const tasksData = response?.content ;
       const safeData = Array.isArray(tasksData) ? tasksData : [];
-
-      setRawTasks(safeData);
       setDataSource(safeData);
     } catch (error) {
       console.error("Lỗi lấy danh sách task:", error);
-      message.error("Không thể tải danh sách công việc.");
-      setRawTasks([]);
+      message.error("Không thể tải danh sách công việc.");      
       setDataSource([]);
     }
   };
@@ -41,7 +36,7 @@ export default function TaskTable() {
     if (userRole) {
       fetchTasks();
     }
-  }, [userRole]);
+  }, [userRole, refreshToggle]);
 
   const handleDeleteTask = async (taskId) => {
     try {
@@ -233,9 +228,12 @@ export default function TaskTable() {
         destroyOnHidden
       >
         <TaskForm
-          initialValues={editingTask}
-          onSubmit={handleFormSubmit}          
-          usersList={usersList} // Truyền danh sách nhân viên vào form
+          editingTask={editingTask}
+          onSuccess={()=>{
+            setCreateForm(false)
+            fetchTasks();
+            userList
+          }}
         />
       </Modal>
     </>
