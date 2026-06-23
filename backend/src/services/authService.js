@@ -42,6 +42,7 @@ export const processCheckPhoneAccessCode = async (idToken) => {
   if (!firebaseAuth) {
     throw new Error("FIREBASE_NOT_INITIALIZED");
   }
+
   let decodedToken;
   try {    
     decodedToken = await firebaseAuth.verifyIdToken(idToken);
@@ -49,20 +50,37 @@ export const processCheckPhoneAccessCode = async (idToken) => {
     console.error("Firebase Token Verification Failed:", firebaseError.message);
     throw new Error("INVALID_FIREBASE_TOKEN");
   }
+
   const firebasePhoneNumber = decodedToken.phone_number;
   if (!firebasePhoneNumber) {
     throw new Error("NO_PHONE_NUMBER_IN_TOKEN");
   }
+
   let formattedPhone = firebasePhoneNumber;
   if (firebasePhoneNumber.startsWith("+84")) {
     formattedPhone = "0" + firebasePhoneNumber.slice(3);
   }
+
+  // 1. Lấy thông tin user (đã bị giấu accessCode gốc từ Repo)
   const user = await authRepository.findUserByPhone(formattedPhone, "owner");
   if (!user) {
     throw new Error("DB_OWNER_NOT_MATCH");
   }
+
+  // Đảm bảo thuộc tính rỗng trước khi xử lý ghi đè
+  user.accessCode = "";
+
+  // 2. Cập nhật mã UID mới tinh từ Google xuống Database
   await authRepository.updateAccessCode(user, decodedToken.uid);
+
+  // 3. 🟢 GÁN MÃ XỊN VÀO RAM: Đồng bộ UID này ngược lại vào object user 
+  // Để lúc Frontend lưu vào LocalStorage có mã xịn đối chiếu cho các request sau
+  user.accessCode = decodedToken.uid;
+
+  // 4. Tạo mã JWT nội bộ (Lúc này payload đã chứa accessCode xịn)
   const JWTtoken = await createJWT(user);
+
+  // 5. Trả về trọn bộ cho Frontend
   return { user, loginToken: JWTtoken };
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { auth } from "../../configs/firebase";
@@ -31,10 +31,15 @@ export default function Login() {
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState("input");
   const [authType, setAuthType] = useState("");
+  const recaptchaVerifier = useRef(null);
+  const confirmationResult = useRef(null);
 
   useEffect(() => {
-    if (!window.recaptchaVerifier && document.getElementById("recaptcha-container")) {
-      window.recaptchaVerifier = new RecaptchaVerifier(
+    if (
+      !recaptchaVerifier.current &&
+      document.getElementById("recaptcha-container")
+    ) {
+      recaptchaVerifier.current = new RecaptchaVerifier(
         auth,
         "recaptcha-container",
         {
@@ -93,7 +98,7 @@ export default function Login() {
         }
         dispatch(setOtpVerifyingInfo({ displayValue: formattedMail }));
         setStep("otp");
-        setOtp(""); 
+        setOtp("");
         return;
       }
 
@@ -108,8 +113,8 @@ export default function Login() {
           return;
         }
 
-        const verification = window.recaptchaVerifier;
-        window.confirmationResult = await signInWithPhoneNumber(
+        const verification = recaptchaVerifier.current;
+        confirmationResult.current = await signInWithPhoneNumber(
           auth,
           formattedPhone,
           verification,
@@ -117,7 +122,7 @@ export default function Login() {
 
         dispatch(setOtpVerifyingInfo({ displayValue: formattedPhone }));
         setStep("otp");
-        setOtp(""); 
+        setOtp("");
       }
     } catch (error) {
       console.error("handleSendCode error:", error);
@@ -141,7 +146,7 @@ export default function Login() {
     try {
       let loginResponse;
       if (authType === "phone") {
-        const googleResult = await window.confirmationResult.confirm(otp);
+        const googleResult = await confirmationResult.current.confirm(otp);
         const idToken = await googleResult.user.getIdToken();
         loginResponse = await verifyPhoneOtpApi({ idToken });
       } else if (authType === "email") {
@@ -149,13 +154,13 @@ export default function Login() {
           email: otpVerifyingInfo?.displayValue,
           otp: otp,
         });
+      } else {
+        throw new Error("Unsupported authentication type");
       }
-      const responseData = loginResponse; 
-      const authContent = responseData?.content;
-      console.log(responseData)
-
+      const responseData = loginResponse;
+      const authContent = responseData?.content;      
       if (responseData?.success && authContent) {
-        localStorage.setItem(USER_KEY, JSON.stringify(authContent));        
+        localStorage.setItem(USER_KEY, JSON.stringify(authContent));
         dispatch(setUserInfoAction(authContent.user));
         dispatch(setAuthenRole(authContent.user?.role || null));
         navigate("/");
@@ -200,7 +205,7 @@ export default function Login() {
             </form>
             <p className="sub-text-footer">
               passwordless authentication methods.
-            </p>            
+            </p>
           </>
         ) : (
           <>
