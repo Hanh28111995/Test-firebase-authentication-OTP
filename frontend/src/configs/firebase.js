@@ -1,15 +1,15 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
-
+console.log("Check API KEY:", process.env.REACT_APP_FIREBASE_WEB_API_KEY);
 const firebaseConfig = {
-  apiKey: "AIzaSyAFGUg7TQD0X5IxRjM31FD57ANangSbmkY",
-  authDomain: "taskmanagement-3b275.firebaseapp.com",
-  projectId: "taskmanagement-3b275",
-  storageBucket: "taskmanagement-3b275.firebasestorage.app",
-  messagingSenderId: "1095631177395",
-  appId: "1:1095631177395:web:41222b5e891cae7cedd2c6",
-  measurementId: "G-F82QJ86KMJ"
+  apiKey: process.env.REACT_APP_FIREBASE_WEB_API_KEY,
+  authDomain: `${process.env.REACT_APP_PROJECT_ID}.firebaseapp.com`,
+  projectId: process.env.REACT_APP_PROJECT_ID,
+  storageBucket: `${process.env.REACT_APP_PROJECT_ID}.firebasestorage.app`,
+  messagingSenderId: process.env.REACT_APP_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_APP_ID,
+  measurementId: process.env.REACT_APP_MEASUREMENT_ID
 };
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

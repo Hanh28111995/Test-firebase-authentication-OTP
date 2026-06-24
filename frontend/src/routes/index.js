@@ -8,6 +8,7 @@ import Login from "../pages/auth/Login";
 import EmployeeTable from "../pages/table/EmployeeTable";
 import MainLayout from "../components/Layout/MainLayout";
 import ActiveAcc from "../pages/activeAcc/ActiveAcc";
+import ChatPage from "../pages/message/ChatPage";
 
 export default function Router() {
   const routing = useRoutes([
@@ -48,6 +49,10 @@ export default function Router() {
             {
               path: "/tasks",
               element: <TaskTable />,
+            },
+              {
+              path: "/messages",
+              element: <ChatPage />,
             },
           ],
         },

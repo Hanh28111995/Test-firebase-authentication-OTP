@@ -36,10 +36,13 @@ export default function MainLayout() {
         
         <nav className="sidebar-nav">
           <Link to="/tasks" className={`nav-link ${checkActive('/tasks')}`}>
-            Quản lý Tasks
+            Manage Task
           </Link>
           <Link to="/employees" className={`nav-link ${checkActive('/employees')}`}>
-            Quản lý Nhân viên
+            Manage Employee
+          </Link>
+          <Link to="/messages" className={`nav-link ${checkActive('/messages')}`}>
+            Message
           </Link>
         </nav>
       </aside>

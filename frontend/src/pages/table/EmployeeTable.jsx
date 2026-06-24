@@ -1,45 +1,42 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Table, Button, Tag, Space, Modal, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import UserForm from "../../components/Form/UserForm.jsx";
 import {
-  createUserApi,
   deleteUserApi,
   getAllUserApi,
 } from "../../services/owner.user.service.js";
+import { useSelector } from "react-redux";
+import useAsync from "../../hooks/useQuery.js";
 import "./index.scss";
 
 export default function EmployeeTable() {
-  const [refreshToggle, setRefreshToggle] = useState(false);
-  const [dataSource, setDataSource] = useState([]);
   const [createForm, setCreateForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const userRole = useSelector(
+    (state) =>
+      state.userReducer.userInfor?.role ||
+      state.userReducer.userInfor?.user.role,
+  );
 
-  
-  const fetchEmployeeList = async () => {
-    try {
-      const res = await getAllUserApi();
-      setDataSource(res?.content || []);
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  const {
+    state: dataSource,
+    refetch,
+    isLoading,
+  } = useAsync({
+    queryKey: ["employees"],
+    service: getAllUserApi,
+    staleTime: 1000 * 60 * 10,
+  });
 
-  useEffect(() => {
-    fetchEmployeeList();
-  }, [refreshToggle]); 
-
-  // Hàm xóa nhân viên
   const handleDeleteEmployee = async (id) => {
     try {
       await deleteUserApi(id);
-      message.success("Tạo nhân viên mới thành công!");
-      setTimeout(() => {
-        setRefreshToggle((prev) => !prev);
-      }, 500);
-      setRefreshToggle((prev) => !prev);
+      message.success("Xóa nhân viên thành công!");
+      refetch();
     } catch (error) {
       console.error(error);
+      message.error("Xóa nhân viên thất bại!");
     }
   };
 
@@ -80,7 +77,6 @@ export default function EmployeeTable() {
             type="primary"
             onClick={() => {
               setEditingEmployee(record);
-              console.log(record);
               setCreateForm(true);
             }}
           >
@@ -106,7 +102,7 @@ export default function EmployeeTable() {
         <div className="employee-card">
           <div className="toolbar">
             <div className="count-text">
-              <strong>{dataSource.length} Employee</strong>
+              <strong>{dataSource?.length || 0} Employee</strong>
             </div>
 
             <div className="right-actions">
@@ -125,7 +121,7 @@ export default function EmployeeTable() {
           <Table
             rowKey={(record) => record._id}
             columns={columns}
-            dataSource={dataSource}
+            dataSource={dataSource || []}
             pagination={false}
             bordered={false}
             className="employee-table"
@@ -141,13 +137,15 @@ export default function EmployeeTable() {
             setEditingEmployee(null);
           }}
           footer={null}
-          destroyOnHidden
+          destroyOnClose
         >
           <UserForm
+            role={userRole}
             editingEmployee={editingEmployee}
             onSuccess={() => {
               setCreateForm(false);
-              fetchEmployeeList();
+              setEditingEmployee(null);
+              refetch();
             }}
           />
         </Modal>

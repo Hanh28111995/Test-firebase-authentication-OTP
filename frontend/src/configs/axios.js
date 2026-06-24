@@ -18,8 +18,20 @@ request.interceptors.request.use(async (config) => {
         config.headers.Authorization = `Bearer ${token}`;
       }    
       const auth = getAuth();
-      if (auth.currentUser) {        
-        const firebaseRealtimeToken = await auth.currentUser.getIdToken();
+      
+     const currentUser = await new Promise((resolve) => {
+        // Nếu có user sẵn rồi thì lấy luôn
+        if (auth.currentUser) return resolve(auth.currentUser);
+        // Nếu chưa có, đợi thằng onAuthStateChanged phát tín hiệu (chỉ nghe 1 lần duy nhất để tránh rò rỉ bộ nhớ)
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+          unsubscribe();
+          resolve(user);
+        });
+      });
+
+      // Nếu sau khi đợi mà tìm thấy user, tiến hành lấy token đóng gói vào header
+      if (currentUser) {        
+        const firebaseRealtimeToken = await currentUser.getIdToken();
         if (firebaseRealtimeToken) {
           config.headers["firebase-token"] = firebaseRealtimeToken;
         }
@@ -39,10 +51,8 @@ request.interceptors.response.use(
   },
   (error) => {
     console.log("Lỗi hệ thống trả về:", error);    
-    if (
-      error.response && 
-      error.response.status === 403 && 
-      error.response.data?.code === "AUTH_MISMATCH"
+    if (      
+      error.response.status === 403 
     ) {
       alert("Phiên làm việc không hợp lệ hoặc đã thay đổi thiết bị. Vui lòng đăng nhập lại!");            
       localStorage.removeItem(USER_KEY);            

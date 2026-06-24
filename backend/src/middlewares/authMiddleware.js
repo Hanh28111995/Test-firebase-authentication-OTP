@@ -45,7 +45,7 @@ export const verifyFireBaseOwner = async (req, res, next) => {
     const firebaseAccessCode = req.headers["firebase-token"];
     if (!firebaseAccessCode)
       return res
-        .status(401)
+        .status(403)
         .json({ success: false, message: "Thiếu mã xác thực từ Google" });
     const firebaseAuth = getAuthService();
     const decodedToken = await firebaseAuth.verifyIdToken(firebaseAccessCode);

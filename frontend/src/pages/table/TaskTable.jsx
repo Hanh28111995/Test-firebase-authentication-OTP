@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Table, Button, Tag, Space, Avatar, message, Modal } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import {
@@ -6,17 +6,17 @@ import {
   deleteTaskApi,
 } from "../../services/role.task.service";
 import { useSelector } from "react-redux";
-import "./index.scss";
+
 import TaskForm from "../../components/Form/TaskForm";
 import { getUserListByEmployeeApi } from "../../services/employee.user.service";
 import { getAllUserApi } from "../../services/owner.user.service";
+import "./index.scss";
+import useAsync from "../../hooks/useQuery.js";
+
 
 export default function TaskTable() {
-  const [refreshToggle, setRefreshToggle] = useState(false);
-  const [dataSource, setDataSource] = useState([]);
   const [createForm, setCreateForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [userList, setUserList] = useState(null);
 
   const userRole = useSelector(
     (state) =>
@@ -29,46 +29,37 @@ export default function TaskTable() {
       state.userReducer.userInfor?._id || state.userReducer.userInfor?.user._id,
   );
 
-  const fetchTasks = async () => {
-    try {
-      let getUsers = userList;
+  const { state: userList } = useAsync({    
+    queryKey: ["users"],     
+    condition: !!userRole,     
+    service: async () => {
+      let getUsers;
       if (userRole === "owner") {
         getUsers = await getAllUserApi();
       } else {
         getUsers = await getUserListByEmployeeApi();
       }
-      const IDvsNameUsers = getUsers?.content.map((user) => ({
-        _id: user._id,
-        userName: user.userName,
-      }));
-      setUserList(IDvsNameUsers);
-      const getTasks = await getAllTasksApi(userRole);
-      const tasksData = getTasks?.content;
-      const safeData = Array.isArray(tasksData) ? tasksData : [];
-      setDataSource(safeData);
-    } catch (error) {
-      message.error("Không thể tải danh sách user/task.");
-      console.error(error);
-      setDataSource([]);
-    }
-  };
-
-  useEffect(() => {
-    if (userRole) {
-      fetchTasks();
-    }
-  }, [refreshToggle]);
+      return (
+        getUsers?.data?.content?.map((user) => ({
+          _id: user._id,
+          userName: user.userName,
+        })) || []
+      );
+    },
+  });
+  
+  const { state: dataSource, refetch } = useAsync({
+    queryKey: ["tasks", userRole],         
+    service: () => getAllTasksApi(userRole),
+  });
 
   const handleDeleteTask = async (taskId) => {
     try {
-      const response = await deleteTaskApi(userRole, taskId);
-      if (response?.success || response) {
-        message.success("Xóa công việc thành công!");
-        fetchTasks();
-      }
+      await deleteTaskApi(userRole, taskId);
+      message.success("Xóa công việc thành công!");
+      refetch();
     } catch (error) {
       console.error("Lỗi xóa task:", error);
-      message.error("Xóa công việc thất bại.");
     }
   };
 
@@ -105,12 +96,7 @@ export default function TaskTable() {
   };
 
   const columns = [
-    {
-      title: "Task",
-      dataIndex: "title",
-      key: "title",
-      width: "25%",
-    },
+    { title: "Task", dataIndex: "title", key: "title", width: "25%" },
     {
       title: "Project",
       dataIndex: "projectName",
@@ -166,7 +152,7 @@ export default function TaskTable() {
       title: "Action",
       key: "action",
       width: "15%",
-      render: (_, record) => {        
+      render: (_, record) => {
         const isCreator = userID === record.createdBy;
         return (
           <Space>
@@ -176,7 +162,7 @@ export default function TaskTable() {
             <Button
               danger
               onClick={() => handleDeleteTask(record._id)}
-              disabled={!isCreator} 
+              disabled={!isCreator}
             >
               Delete
             </Button>
@@ -203,7 +189,7 @@ export default function TaskTable() {
                 ghost
                 icon={<PlusOutlined />}
                 className="create-btn"
-                onClick={() => setCreateForm(true)}
+                onClick={openCreateModal}
               >
                 Create New Task
               </Button>
@@ -213,35 +199,41 @@ export default function TaskTable() {
           <Table
             rowKey="_id"
             columns={columns}
-            dataSource={dataSource}
+            dataSource={dataSource || []}
             pagination={{ pageSize: 10 }}
             className="task-table"
           />
         </div>
       </div>
 
-      <Modal
-        title={
-          editingTask
-            ? "Chỉnh sửa công việc (Edit Issue)"
-            : "Tạo công việc mới (Create Issue)"
-        }
-        open={createForm}
-        onCancel={() => setCreateForm(false)}
-        footer={null}
-        width={1000}
-        destroyOnHidden
-      >
-        <TaskForm
-          role={userRole}
-          editingTask={editingTask}
-          userList={userList}
-          onSuccess={() => {
+      {createForm && (
+        <Modal
+          title={
+            editingTask
+              ? "Chỉnh sửa công việc (Edit Issue)"
+              : "Tạo công việc mới (Create Issue)"
+          }
+          open={createForm}
+          onCancel={() => {
             setCreateForm(false);
-            fetchTasks();
+            setEditingTask(null);
           }}
-        />
-      </Modal>
+          footer={null}
+          width={1000}
+          destroyOnClose
+        >
+          <TaskForm
+            role={userRole}
+            editingTask={editingTask}
+            userList={userList || []} // Đảm bảo luôn truyền mảng an toàn
+            onSuccess={() => {
+              setCreateForm(false);
+              setEditingTask(null);
+              refetch();
+            }}
+          />
+        </Modal>
+      )}
     </>
   );
 }

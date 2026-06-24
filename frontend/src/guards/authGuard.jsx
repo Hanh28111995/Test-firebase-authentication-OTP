@@ -10,6 +10,6 @@ export default function AuthGuards() {
       navigate("/signin");
     }
   }, [userState.userInfor, navigate]);
-
   return <Outlet />;
 }
+

@@ -1,0 +1,174 @@
+.chat-page-container {
+  display: flex;
+  width: 100%;
+  height: calc(100vh - 100px); // Tự động co dãn theo chiều cao của Main Layout
+  gap: 20px;
+  background-color: transparent;
+
+  // ==========================================
+  // KHU VỰC 1: DANH SÁCH CUỘC HỘI THOẠI (BÊN TRÁI)
+  // ==========================================
+  .conversations-sidebar {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+
+    .sidebar-header {
+      background-color: #f5f5f5;
+      border-radius: 16px;
+      padding: 20px;
+
+      h3 {
+        margin: 0 0 15px 0;
+        font-size: 16px;
+        color: #333333;
+        font-weight: 600;
+      }
+
+      .search-box-mock {
+        height: 38px;
+        background-color: #ffffff;
+        border-radius: 8px;
+      }
+    }
+
+    .rooms-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+
+      .room-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background-color: #f5f5f5;
+        border-radius: 16px;
+        padding: 15px 20px;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+
+        &:hover,
+        &.active {
+          background-color: #e6f0fa; // Màu xanh nhạt nhẹ khi chọn hoặc hover
+        }
+
+        .avatar-mock {
+          color: #888888;
+          display: flex;
+          align-items: center;
+        }
+
+        .room-info {
+          h4 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+            color: #333333;
+          }
+
+          .last-msg {
+            margin: 0;
+            font-size: 13px;
+            color: #666666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+        }
+      }
+    }
+  }
+
+  // ==========================================
+  // KHU VỰC 2: KHUNG CHATBOX CHÍNH (BÊN PHẢI)
+  // ==========================================
+  .chat-content-area {
+    flex: 1;
+    background-color: #f5f5f5;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+
+    .messages-display {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+
+      .msg-bubble-wrapper {
+        display: flex;
+        width: 100%;
+
+        &.own {
+          justify-content: flex-end;
+
+          .msg-bubble {
+            background-color: #007bff;
+            color: #ffffff;
+            border-bottom-right-radius: 2px; // Bo góc kiểu tin nhắn của tôi
+          }
+        }
+
+        &.other {
+          justify-content: flex-start;
+
+          .msg-bubble {
+            background-color: #ffffff;
+            color: #333333;
+            border-bottom-left-radius: 2px; // Bo góc kiểu tin nhắn đối phương
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+          }
+        }
+
+        .msg-bubble {
+          max-width: 65%;
+          padding: 12px 16px;
+          border-radius: 14px;
+          font-size: 14px;
+          line-height: 1.4;
+
+          p {
+            margin: 0;
+          }
+        }
+      }
+    }
+
+    // Thanh nhập liệu dưới đáy khung chatbox giống ảnh mẫu
+    .message-input-form {
+      padding: 0;
+      background-color: #dcdcdc; // Màu xám đặc trưng vùng nhập liệu trong ảnh của bạn
+
+      input {
+        width: 100%;
+        height: 54px;
+        border: none;
+        background-color: transparent;
+        padding: 0 24px;
+        font-size: 14px;
+        color: #333333;
+        outline: none;
+
+        &::placeholder {
+          color: #777777;
+        }
+      }
+    }
+  }
+
+  .no-active-room {
+    flex: 1;
+    background-color: #f5f5f5;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666666;
+    font-size: 14px;
+  }
+}
