@@ -1,48 +1,67 @@
-import "dotenv/config";
-import cors from "cors";
-import express from "express";
-import http from "http";
+import { Server } from "socket.io";
+// 1. Import các hàm từ repository bạn vừa viết
+import { createMessage, initializeRoom } from "../repositories/messageRepository.js";
 
-import dbMiddleware from "./src/config/db.js";
-import ownerRouter from "./src/router/owner/index.js";
-import employeeRouter from "./src/router/employee/index.js";
-import AUTHRouter from "./src/router/auth.js";
+let io = null;
 
-import { initFirebase } from "./src/config/firebase.js";
-import { activeAccount } from "./src/controllers/auth.js";
-import { verifyToken, checkRole, verifyFireBaseOwner } from "./src/middlewares/authMiddleware.js";
-import { initChatSocket } from "./src/socket/chat.js";
+export const initChatSocket = (server) => {
+  io = new Server(server, {
+    cors: {
+      origin: process.env.FRONT_END_URL || "http://localhost:3000",
+      methods: ["GET", "POST"],
+      credentials: true
+    },
+  });
 
-initFirebase();
+  // (Bạn có thể thêm middleware bảo mật check token ở đây nếu muốn)
 
-const PORT = process.env.PORT || 5000;
-const app = express();
-const server = http.createServer(app);
+  io.on("connection", (socket) => {
+    console.log(`⚡ Thiết bị kết nối Chat: ${socket.id}`);
 
-initChatSocket(server);
+    // 2. Khi một user click vào thành viên (Client phát tín hiệu join_room)
+    socket.on("join_room", async (data) => {
+      // data gửi từ Client lên gồm: { roomId, ownerId, employeeId }
+      const { roomId, ownerId, employeeId } = data;
+      
+      socket.join(roomId);
+      console.log(`Socket ${socket.id} đã vào phòng: ${roomId}`);
 
-app.use(
-  cors({
-    origin: process.env.FRONT_END_URL,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    credentials: true,
-  }),
-);
+      try {
+        // Tự động kích hoạt khởi tạo phòng trên Firestore nếu đây là lần đầu 2 người chat với nhau
+        await initializeRoom(roomId, [ownerId, employeeId]);
+      } catch (error) {
+        console.error("Lỗi khi khởi tạo phòng chat trên Firestore:", error);
+      }
+    });
 
-app.use(dbMiddleware);
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+    // 3. Khi Owner hoặc Employee gõ chữ và bấm GỬI (Client phát tín hiệu send_message)
+    socket.on("send_message", async (data) => {
+      // data gửi từ Client gồm: { roomId, senderId, message }
+      const { roomId, senderId, message } = data;
 
-// Route HTTP APIs
-app.put("/api/account-confirm", activeAccount);
-app.use("/api/signin", AUTHRouter);
-app.use("/api/signup", verifyToken, checkRole("owner"), AUTHRouter);
-app.use("/api/owner", verifyToken, checkRole("owner"), verifyFireBaseOwner, ownerRouter);
-app.use("/api/employee", verifyToken, checkRole("employee"), employeeRouter);
+      try {
+        // 🔥 LƯU DỮ LIỆU THẬT VÀO FIRESTORE QUA REPOSITORY
+        const savedMsg = await createMessage(roomId, senderId, message);
 
-server.listen(PORT, () => {
-  console.log(`Server đang vận hành ổn định tại port: ${PORT}`);
-  console.log(`Tính năng Chat Real-time đã được tách riêng và sẵn sàng!`);
-});
+        // Bắn tin nhắn thời gian thực này tới người còn lại ĐANG TRONG PHÒNG
+        socket.to(roomId).emit("receive_message", savedMsg);
+        
+      } catch (error) {
+        console.error("Không thể lưu hoặc gửi tin nhắn realtime:", error);
+        // Bạn có thể emit một sự kiện lỗi về lại cho người gửi nếu muốn
+        socket.emit("send_message_error", { message: "Gửi tin nhắn thất bại" });
+      }
+    });
 
-export default app;
+    socket.on("disconnect", () => {
+      console.log(`❌ Thiết bị ngắt kết nối: ${socket.id}`);
+    });
+  });
+
+  return io;
+};
+
+export const getIO = () => {
+  if (!io) throw new Error("Socket.io chưa được khởi tạo!");
+  return io;
+};

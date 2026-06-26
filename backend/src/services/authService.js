@@ -17,8 +17,7 @@ const createJWT = async (user) => {
 
 // LOGIC: SIGNIN OWNER (PHONE OTP AUTH)
 export const processLoginPhone = async (phoneNumber) => {
-  try {
-    console.log("Khởi chạy processLoginPhone với SĐT:", phoneNumber);
+  try {    
     const user = await authRepository.findUserByPhone(phoneNumber, "owner");
     if (!user) throw new Error("User does not exist trong hệ thống.");
 
@@ -42,7 +41,6 @@ export const processCheckPhoneAccessCode = async (idToken) => {
   if (!firebaseAuth) {
     throw new Error("FIREBASE_NOT_INITIALIZED");
   }
-
   let decodedToken;
   try {    
     decodedToken = await firebaseAuth.verifyIdToken(idToken);
@@ -50,12 +48,10 @@ export const processCheckPhoneAccessCode = async (idToken) => {
     console.error("Firebase Token Verification Failed:", firebaseError.message);
     throw new Error("INVALID_FIREBASE_TOKEN");
   }
-
   const firebasePhoneNumber = decodedToken.phone_number;
   if (!firebasePhoneNumber) {
     throw new Error("NO_PHONE_NUMBER_IN_TOKEN");
   }
-
   let formattedPhone = firebasePhoneNumber;
   if (firebasePhoneNumber.startsWith("+84")) {
     formattedPhone = "0" + firebasePhoneNumber.slice(3);
@@ -66,7 +62,6 @@ export const processCheckPhoneAccessCode = async (idToken) => {
   if (!user) {
     throw new Error("DB_OWNER_NOT_MATCH");
   }
-
   // Đảm bảo thuộc tính rỗng trước khi xử lý ghi đè
   user.accessCode = "";
 

@@ -26,6 +26,7 @@ export default function TaskForm({ editingTask, onSuccess, userList, role }) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const isEditMode = !!editingTask;
+  console.log("👥 Component con nhận được userList:", userList);
 
   useEffect(() => {
     if (editingTask && Array.isArray(userList)) {      

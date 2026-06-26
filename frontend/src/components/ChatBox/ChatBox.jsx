@@ -1,6 +1,6 @@
-// src/components/ChatBox.jsx
 import React, { useState, useEffect, useRef } from "react";
-import { socket } from "../../configs/socket"; // Đường dẫn tới file chứa cấu hình io() của bạn
+import { getSocket } from "../../configs/socket";
+import { getChatHistoryApi, markAsReadApi } from "../../services/chat.service";
 
 const ChatBox = ({ activeRoom, currentUser }) => {
   const [messages, setMessages] = useState([]);
@@ -16,45 +16,95 @@ const ChatBox = ({ activeRoom, currentUser }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Lắng nghe luồng sự kiện Socket theo phòng chat
+  // Luồng xử lý khi ĐỔI PHÒNG CHAT (activeRoom thay đổi)
   useEffect(() => {
-    if (!activeRoom?.id) return;
+    // 🛡️ SỬA 1: Chặn tuyệt đối nếu phòng bị rỗng hoặc dính chuỗi hỏng "undefined" từ Front-end
+    if (!activeRoom?.roomId || activeRoom.roomId.includes("undefined")) {
+      console.warn("⚠️ Room ID chưa sẵn sàng hoặc không hợp lệ:", activeRoom?.roomId);
+      return;
+    }
 
-    // 1. Gửi tín hiệu gia nhập phòng chat lên Backend
-    socket.emit("JOIN_ROOM", activeRoom.id);
+    // 🛡️ SỬA 2: Lấy thực thể socket *bên trong* useEffect để đảm bảo giá trị mới nhất
+    const socket = getSocket();
+    if (!socket) {
+      console.warn("⚠️ Socket kết nối chưa sẵn sàng. Đang đợi...");
+      return;
+    }
+
+    // --- LUỒNG HTTP API ---
+    const loadChatHistory = async () => {
+      try {
+        const res = await getChatHistoryApi(activeRoom.roomId);
+        if (res?.success) {
+          setMessages(res.data || []);
+        }
+        
+        // Chỉ gọi API xóa chấm đỏ khi roomId đã sạch sẽ hoàn toàn
+        await markAsReadApi(activeRoom.roomId);
+      } catch (error) {
+        console.error("Lỗi khi lấy lịch sử chat:", error);
+      }
+    };
+
+    loadChatHistory();
+
+    // --- LUỒNG SOCKET REALTIME ---
+    const currentUserId = currentUser?.uid || currentUser?._id;
+
+    // Chuẩn bị payload báo lên Server (Sử dụng ID nhất quán)
+    const joinPayload = {
+      roomId: activeRoom.roomId,
+      ownerId: currentUser?.role === "owner" ? currentUserId : "owner_uid_fallback", 
+      employeeId: currentUser?.role === "employee" ? currentUserId : activeRoom.uid
+    };
+
+    // Phát tín hiệu gia nhập phòng an toàn
+    socket.emit("join_room", joinPayload);
     
-    // Tạm thời reset danh sách tin nhắn để chuẩn bị nhận luồng mới (hoặc gọi API lấy lịch sử)
-    setMessages([]);
-
-    // 2. Lắng nghe tin nhắn real-time đổ về từ Server
-    socket.on("RECEIVE_MESSAGE", (newMessage) => {
-      if (newMessage.roomId === activeRoom.id) {
-        setMessages((prev) => [...prev, newMessage]);
+    // Lắng nghe tin nhắn real-time đổ về từ Server
+    socket.on("receive_message", (newMessage) => {
+      if (newMessage.roomId === activeRoom.roomId) {
+        // 🛡️ SỬA 3: Chống trùng lặp tin nhắn
+        setMessages((prev) => {
+          const isExist = prev.some((msg) => msg.id === newMessage.id || (msg.createdAt === newMessage.createdAt && msg.senderId === newMessage.senderId));
+          if (isExist) return prev;
+          return [...prev, newMessage];
+        });
       }
     });
 
-    // 3. Rời phòng và tắt lắng nghe khi chuyển phòng khác hoặc unmount
+    // Dọn dẹp listener khi chuyển phòng khác hoặc unmount
     return () => {
-      socket.emit("LEAVE_ROOM", activeRoom.id);
-      socket.off("RECEIVE_MESSAGE");
+      socket.off("receive_message");
     };
-  }, [activeRoom?.id]);
+  // Lắng nghe thêm biến currentUser để cập nhật chính xác quyền khi socket bắt đầu gửi nhận
+  }, [activeRoom?.roomId, currentUser]);
 
   // Xử lý sự kiện nhấn Enter gửi tin nhắn
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!textInput.trim()) return;
 
+    const socket = getSocket();
+    if (!socket) {
+      alert("Mất kết nối real-time, vui lòng thử lại!");
+      return;
+    }
+
+    const currentUserId = currentUser?.uid || currentUser?._id || "mock_uid";
+
     const messageData = {
-      roomId: activeRoom.id,
-      senderId: currentUser?._id || "owner_id_demo", 
-      senderName: currentUser?.userName || "Owner_Hanh",
-      content: textInput.trim(),
-      createdAt: new Date().toISOString(),
+      roomId: activeRoom.roomId,
+      senderId: currentUserId, 
+      message: textInput.trim(),
     };
 
-    // Bắn tin nhắn real-time qua WebSockets
-    socket.emit("SEND_MESSAGE", messageData);
+    // 🚀 Bắn tin nhắn real-time lên Server
+    socket.emit("send_message", messageData);
+
+    // 🛡️ SỬA 4: Bỏ setMessages thủ công ở đây để tránh bị nhân đôi tin nhắn,
+    // Hãy để listener "receive_message" ở useEffect phía trên lo toàn bộ việc đẩy tin nhắn lên màn hình.
+    
     setTextInput("");
   };
 
@@ -68,14 +118,14 @@ const ChatBox = ({ activeRoom, currentUser }) => {
 
   return (
     <div className="chat-content-area">
-      {/* 1. Vùng hiển thị nội dung tin nhắn */}
       <div className="messages-display">
         {messages.map((msg, index) => {
-          const isOwn = msg.senderId === (currentUser?._id || "owner_id_demo");
+          const currentUserId = currentUser?.uid || currentUser?._id || "mock_uid";
+          const isOwn = msg.senderId === currentUserId;
           return (
-            <div key={index} className={`msg-bubble-wrapper ${isOwn ? "own" : "other"}`}>
+            <div key={msg.id || index} className={`msg-bubble-wrapper ${isOwn ? "own" : "other"}`}>
               <div className="msg-bubble">
-                <p>{msg.content}</p>
+                <p>{msg.message}</p>
               </div>
             </div>
           );
@@ -83,7 +133,6 @@ const ChatBox = ({ activeRoom, currentUser }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 2. Thanh nhập liệu (Màu xám bo góc dưới cùng) */}
       <form className="message-input-form" onSubmit={handleSendMessage}>
         <input
           type="text"

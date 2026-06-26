@@ -31,28 +31,41 @@ export default function Login() {
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState("input");
   const [authType, setAuthType] = useState("");
+
   const recaptchaVerifier = useRef(null);
   const confirmationResult = useRef(null);
+  const recaptchaContainerRef = useRef(null);
 
+  // 🛠️ KHỞI TẠO RECAPTCHA KHỚP CẤU HÌNH ENTERPRISE INVISIBLE
   useEffect(() => {
-    if (
-      !recaptchaVerifier.current &&
-      document.getElementById("recaptcha-container")
-    ) {
-      recaptchaVerifier.current = new RecaptchaVerifier(
-        auth,
-        "recaptcha-container",
-        {
-          size: "invisible",
-          callback: () => {
-            console.log("reCAPTCHA solved ngầm thành công!");
+    if (!recaptchaVerifier.current && recaptchaContainerRef.current) {
+      try {
+        recaptchaVerifier.current = new RecaptchaVerifier(
+          auth,
+          recaptchaContainerRef.current,
+          {
+            size: "invisible", // Đổi từ 'normal' sang 'invisible' để khớp với Enterprise Key
+            callback: () => {
+              console.log("reCAPTCHA solved thành công!");
+            },
           },
-        },
-      );
+        );
+      } catch (err) {
+        console.error("Lỗi khởi tạo RecaptchaVerifier ban đầu:", err);
+      }
     }
 
-    return () => {};
-  }, []);
+    return () => {
+      if (recaptchaVerifier.current) {
+        try {
+          recaptchaVerifier.current.clear();
+        } catch (e) {
+          console.log("Lỗi dọn dẹp useEffect:", e);
+        }
+        recaptchaVerifier.current = null;
+      }
+    };
+  }, [step]);
 
   const validateInput = (value) => {
     const trimmed = value.trim();
@@ -113,6 +126,16 @@ export default function Login() {
           return;
         }
 
+        // 🛠️ ĐẢM BẢO VERIFIER ĐƯỢC LOAD LẠI SẠCH SẼ TRƯỚC KHI GỬI
+        if (!recaptchaVerifier.current && recaptchaContainerRef.current) {
+          recaptchaContainerRef.current.innerHTML = "";
+          recaptchaVerifier.current = new RecaptchaVerifier(
+            auth,
+            recaptchaContainerRef.current,
+            { size: "invisible" }
+          );
+        }
+
         const verification = recaptchaVerifier.current;
         confirmationResult.current = await signInWithPhoneNumber(
           auth,
@@ -126,8 +149,37 @@ export default function Login() {
       }
     } catch (error) {
       console.error("handleSendCode error:", error);
+
+      // Xóa thực thể lỗi tránh dính cache DOM của Google
+      if (recaptchaVerifier.current) {
+        try {
+          recaptchaVerifier.current.clear();
+        } catch (clearErr) {
+          console.log("Lỗi xóa bộ nhớ captcha:", clearErr);
+        }
+        recaptchaVerifier.current = null;
+      }
+
+      // Ép dọn sạch ruột và tái sinh phần tử Captcha mới ngay tại Ref
+      if (recaptchaContainerRef.current) {
+        recaptchaContainerRef.current.innerHTML = "";
+        try {
+          recaptchaVerifier.current = new RecaptchaVerifier(
+            auth,
+            recaptchaContainerRef.current,
+            {
+              size: "invisible",
+              callback: () => console.log("reCAPTCHA làm mới thành công!"),
+            }
+          );
+        } catch (initErr) {
+          console.error("Lỗi khởi tạo lại:", initErr);
+        }
+      }
+
       const message =
         error?.response?.data?.message ||
+        error?.message ||
         "Không thể gửi mã xác nhận. Vui lòng thử lại.";
       dispatch(setAuthenError(message));
     } finally {
@@ -158,7 +210,7 @@ export default function Login() {
         throw new Error("Unsupported authentication type");
       }
       const responseData = loginResponse;
-      const authContent = responseData?.content;      
+      const authContent = responseData?.content;
       if (responseData?.success && authContent) {
         localStorage.setItem(USER_KEY, JSON.stringify(authContent));
         dispatch(setUserInfoAction(authContent.user));
@@ -194,6 +246,13 @@ export default function Login() {
                   className="custom-input"
                 />
               </div>
+
+              {/* Vùng chứa ẩn cho reCAPTCHA Invisible */}
+              <div
+                ref={recaptchaContainerRef}
+                id="recaptcha-container"
+              ></div>
+
               <button
                 id="btn-send-code"
                 type="submit"
@@ -255,8 +314,6 @@ export default function Login() {
 
         {authenError && <p className="error-text">{authenError}</p>}
       </div>
-
-      <div id="recaptcha-container"></div>
     </div>
   );
 }

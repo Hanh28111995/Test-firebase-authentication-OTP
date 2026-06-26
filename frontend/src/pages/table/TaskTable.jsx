@@ -1,22 +1,24 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Table, Button, Tag, Space, Avatar, message, Modal } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import {
   getAllTasksApi,
   deleteTaskApi,
 } from "../../services/role.task.service";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import TaskForm from "../../components/Form/TaskForm";
 import { getUserListByEmployeeApi } from "../../services/employee.user.service";
 import { getAllUserApi } from "../../services/owner.user.service";
 import "./index.scss";
 import useAsync from "../../hooks/useQuery.js";
-
+import { setEmployeeStoreList } from "../../store/actions/user.action.js";
 
 export default function TaskTable() {
   const [createForm, setCreateForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [userListChild, setUserListChild] = useState(null);
+  const dispatch = useDispatch();
 
   const userRole = useSelector(
     (state) =>
@@ -29,9 +31,8 @@ export default function TaskTable() {
       state.userReducer.userInfor?._id || state.userReducer.userInfor?.user._id,
   );
 
-  const { state: userList } = useAsync({    
-    queryKey: ["users"],     
-    condition: !!userRole,     
+  const { state: userList } = useAsync({
+    queryKey: ["users", userRole],
     service: async () => {
       let getUsers;
       if (userRole === "owner") {
@@ -39,17 +40,21 @@ export default function TaskTable() {
       } else {
         getUsers = await getUserListByEmployeeApi();
       }
-      return (
-        getUsers?.data?.content?.map((user) => ({
+      if (getUsers?.content && Array.isArray(getUsers.content)) {
+        const formattedUsers = getUsers.content.map((user) => ({
           _id: user._id,
           userName: user.userName,
-        })) || []
-      );
+        }));
+        setUserListChild(formattedUsers);
+        dispatch(setEmployeeStoreList(formattedUsers));
+        return formattedUsers;
+      }
+      return [];
     },
   });
-  
+
   const { state: dataSource, refetch } = useAsync({
-    queryKey: ["tasks", userRole],         
+    queryKey: ["tasks", userRole],
     service: () => getAllTasksApi(userRole),
   });
 
@@ -225,7 +230,7 @@ export default function TaskTable() {
           <TaskForm
             role={userRole}
             editingTask={editingTask}
-            userList={userList || []} // Đảm bảo luôn truyền mảng an toàn
+            userList={userListChild.filter((user) => user._id !== userID)}
             onSuccess={() => {
               setCreateForm(false);
               setEditingTask(null);
