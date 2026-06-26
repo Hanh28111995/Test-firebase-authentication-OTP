@@ -11,9 +11,9 @@ export const initChatSocket = (server) => {
       methods: ["GET", "POST"],
       credentials: true
     },
+    allowEIO3: true 
   });
 
-  // (Bạn có thể thêm middleware bảo mật check token ở đây nếu muốn)
 
   io.on("connection", (socket) => {
     console.log(`⚡ Thiết bị kết nối Chat: ${socket.id}`);

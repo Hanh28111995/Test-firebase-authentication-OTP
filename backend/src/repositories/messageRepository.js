@@ -22,7 +22,6 @@ export const initializeRoom = async (roomId, participants) => {
   return roomRef;
 };
 
-
 export const createMessage = async (roomId, senderId, messageContent) => {
   const db = getDB();
   const roomRef = db.collection("rooms").doc(roomId);

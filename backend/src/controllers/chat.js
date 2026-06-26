@@ -14,7 +14,7 @@ import {
 export const getMembersForOwner = async (req, res) => {
   try {
     const db = getFirestore();
-    const ownerId = req.user.uid; // Lấy từ middleware verifyToken
+    const ownerId = req.user._id; 
 
     // Lấy toàn bộ user có role là employee
     const usersSnapshot = await db.collection("users").where("role", "==", "employee").get();
@@ -49,14 +49,10 @@ export const getMembersForOwner = async (req, res) => {
   }
 };
 
-/**
- * 2. API: Lấy danh sách các Owner cho nhân viên chọn (Dành cho Employee)
- * Route: GET /api/chat/employee-members
- */
 export const getMembersForEmployee = async (req, res) => {
   try {
     const db = getFirestore();
-    const employeeId = req.user.uid;
+    const employeeId = req.user._id;
 
     // Lấy toàn bộ user có role là owner
     const ownersSnapshot = await db.collection("users").where("role", "==", "owner").get();
@@ -91,10 +87,6 @@ export const getMembersForEmployee = async (req, res) => {
   }
 };
 
-/**
- * 3. API: Lấy tối đa 50 tin nhắn cũ của một phòng chat đổ vào khung bên phải (Dùng chung)
- * Route: GET /api/chat/history/:roomId
- */
 export const getChatHistory = async (req, res) => {
   try {
     const { roomId } = req.params;
@@ -112,14 +104,11 @@ export const getChatHistory = async (req, res) => {
   }
 };
 
-/**
- * 4. API: Đánh dấu tất cả tin nhắn trong phòng là ĐÃ ĐỌC (Dùng chung)
- * Route: PATCH /api/chat/room/:roomId/read
- */
+
 export const markAsReadHandler = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const currentUserId = req.user.uid;
+    const currentUserId = req.user._id;
 
     if (!roomId) {
       return res.status(400).json({ success: false, message: "Thiếu Room ID!" });

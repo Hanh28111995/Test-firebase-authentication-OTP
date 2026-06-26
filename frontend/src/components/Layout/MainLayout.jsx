@@ -11,16 +11,15 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();    
-  
-  // Lấy dữ liệu user từ Redux Store
-  const { userInfor } = useSelector((state) => state.userReducer);
+    
+  const  userInfor = useSelector((state) => state.userReducer.userInfor);
   
   // 🛡️ SỬA 1: Dùng Optional Chaining (?.) để tránh crash khi userInfor bị null lúc Logout
-  const token = userInfor?.user?.loginToken; 
+  const token = userInfor?.loginToken; 
 
   // 🔌 Quản lý vòng đời kết nối Socket
   useEffect(() => {
-    // 🛡️ SỬA 2: Nếu không có token (chưa đăng nhập hoặc vừa logout), dừng lại luôn, ngắt socket và thoát
+    console.log(token)
     if (!token) {
       disconnectSocket();
       return;
