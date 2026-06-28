@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
-import { auth } from "../../configs/firebase";
+import {  getToken } from "firebase/app-check";
+import { getApp } from "firebase/app";
+import { auth, appCheck } from "../../configs/firebase";
 import {
   loginPhoneApi,
   loginMailApi,
@@ -20,6 +22,8 @@ import OTPInputCustom from "../../components/OtpInput/OtpInput";
 import { useNavigate } from "react-router-dom";
 import { USER_KEY } from "../../constants/common";
 
+const ENTERPRISE_SITE_KEY = "6LfRZDltAAAAAHvs1o_gmPWggcVoqK3d_3ygvBQX";
+
 export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -35,8 +39,8 @@ export default function Login() {
   const recaptchaVerifier = useRef(null);
   const confirmationResult = useRef(null);
   const recaptchaContainerRef = useRef(null);
+  
 
-  // 🛠️ KHỞI TẠO RECAPTCHA KHỚP CẤU HÌNH ENTERPRISE INVISIBLE
   useEffect(() => {
     if (!recaptchaVerifier.current && recaptchaContainerRef.current) {
       try {
@@ -44,9 +48,10 @@ export default function Login() {
           auth,
           recaptchaContainerRef.current,
           {
-            size: "invisible", // Đổi từ 'normal' sang 'invisible' để khớp với Enterprise Key
+            size: "invisible",
+            siteKey: ENTERPRISE_SITE_KEY,
             callback: () => {
-              console.log("reCAPTCHA solved thành công!");
+              console.log("reCAPTCHA Enterprise solved thành công!");
             },
           },
         );
@@ -65,7 +70,7 @@ export default function Login() {
         recaptchaVerifier.current = null;
       }
     };
-  }, [step]);
+  }, []);
 
   const validateInput = (value) => {
     const trimmed = value.trim();
@@ -80,112 +85,85 @@ export default function Login() {
     return { type: "invalid", payload: null };
   };
 
-  const handleSendCode = async (event) => {
-    event.preventDefault();
-    if (!inputVal.trim()) {
-      dispatch(setAuthenError("Vui lòng nhập số điện thoại hoặc email"));
+const handleSendCode = async (event) => {
+  event.preventDefault();
+  
+  if (!inputVal.trim()) {
+    dispatch(setAuthenError("Vui lòng nhập số điện thoại hoặc email"));
+    return;
+  }
+
+  dispatch(setAuthenError(null));
+  const checkResult = validateInput(inputVal);
+
+  if (checkResult.type === "invalid") {
+    dispatch(setAuthenError("Định dạng số điện thoại hoặc email không hợp lệ."));
+    return;
+  }
+
+  dispatch(setAuthenLoading(true));
+  setAuthType(checkResult.type);
+
+  try {
+    // Xử lý Email
+    if (checkResult.type === "email") {
+      const response = await loginMailApi(checkResult.payload);
+      const formattedMail = response?.content?.email;
+      if (!formattedMail) throw new Error("Không nhận được email hợp lệ.");
+      
+      dispatch(setOtpVerifyingInfo({ displayValue: formattedMail }));
+      setStep("otp");
       return;
     }
 
-    dispatch(setAuthenError(null));
-    const checkResult = validateInput(inputVal);
+    // Xử lý Phone
+    if (checkResult.type === "phone") {
+      // 1. Lấy token App Check (Nếu App Check đang bật chế độ Enforce)
+      const appCheckTokenResult = await getToken(appCheck, false);
+      
+      // 2. Gọi API kiểm tra số điện thoại của Backend trước
+      const response = await loginPhoneApi({
+        ...checkResult.payload,
+        appCheckToken: appCheckTokenResult.token,
+      });
+      const formattedPhone = response?.content?.phoneNumber;
+      if (!formattedPhone) throw new Error("Không nhận được số điện thoại hợp lệ.");
 
-    if (checkResult.type === "invalid") {
-      dispatch(
-        setAuthenError("Định dạng số điện thoại hoặc email không hợp lệ."),
+      // 3. Khởi tạo Recaptcha nếu chưa có
+      if (!recaptchaVerifier.current) {
+        recaptchaVerifier.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+          size: "invisible",
+          siteKey: ENTERPRISE_SITE_KEY,
+        });
+      }
+
+      // 4. Gọi Firebase xác thực số điện thoại
+      const confirmation = await signInWithPhoneNumber(
+        auth,
+        formattedPhone,
+        recaptchaVerifier.current
       );
-      return;
+
+      confirmationResult.current = confirmation;
+      dispatch(setOtpVerifyingInfo({ displayValue: formattedPhone }));
+      setStep("otp");
+      setOtp("");
+    }
+  } catch (error) {
+    console.error("handleSendCode error:", error);
+    
+    // Chỉ reset captcha nếu có lỗi nghiêm trọng
+    if (recaptchaVerifier.current) {
+      recaptchaVerifier.current.clear();
+      recaptchaVerifier.current = null;
     }
 
-    dispatch(setAuthenLoading(true));
-    setAuthType(checkResult.type);
-
-    try {
-      if (checkResult.type === "email") {
-        const response = await loginMailApi(checkResult.payload);
-        const formattedMail = response?.content?.email;
-
-        if (!formattedMail) {
-          dispatch(setAuthenError("Không nhận được email hợp lệ từ server."));
-          return;
-        }
-        dispatch(setOtpVerifyingInfo({ displayValue: formattedMail }));
-        setStep("otp");
-        setOtp("");
-        return;
-      }
-
-      if (checkResult.type === "phone") {
-        const response = await loginPhoneApi(checkResult.payload);
-        const formattedPhone = response?.content?.phoneNumber;
-
-        if (!formattedPhone) {
-          dispatch(
-            setAuthenError("Không nhận được số điện thoại hợp lệ từ server."),
-          );
-          return;
-        }
-
-        // 🛠️ ĐẢM BẢO VERIFIER ĐƯỢC LOAD LẠI SẠCH SẼ TRƯỚC KHI GỬI
-        if (!recaptchaVerifier.current && recaptchaContainerRef.current) {
-          recaptchaContainerRef.current.innerHTML = "";
-          recaptchaVerifier.current = new RecaptchaVerifier(
-            auth,
-            recaptchaContainerRef.current,
-            { size: "invisible" }
-          );
-        }
-
-        const verification = recaptchaVerifier.current;
-        confirmationResult.current = await signInWithPhoneNumber(
-          auth,
-          formattedPhone,
-          verification,
-        );
-
-        dispatch(setOtpVerifyingInfo({ displayValue: formattedPhone }));
-        setStep("otp");
-        setOtp("");
-      }
-    } catch (error) {
-      console.error("handleSendCode error:", error);
-
-      // Xóa thực thể lỗi tránh dính cache DOM của Google
-      if (recaptchaVerifier.current) {
-        try {
-          recaptchaVerifier.current.clear();
-        } catch (clearErr) {
-          console.log("Lỗi xóa bộ nhớ captcha:", clearErr);
-        }
-        recaptchaVerifier.current = null;
-      }
-
-      // Ép dọn sạch ruột và tái sinh phần tử Captcha mới ngay tại Ref
-      if (recaptchaContainerRef.current) {
-        recaptchaContainerRef.current.innerHTML = "";
-        try {
-          recaptchaVerifier.current = new RecaptchaVerifier(
-            auth,
-            recaptchaContainerRef.current,
-            {
-              size: "invisible",
-              callback: () => console.log("reCAPTCHA làm mới thành công!"),
-            }
-          );
-        } catch (initErr) {
-          console.error("Lỗi khởi tạo lại:", initErr);
-        }
-      }
-
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Không thể gửi mã xác nhận. Vui lòng thử lại.";
-      dispatch(setAuthenError(message));
-    } finally {
-      dispatch(setAuthenLoading(false));
-    }
-  };
+    const message = error?.response?.data?.message || error?.message || "Lỗi xác thực. Vui lòng thử lại sau.";
+    dispatch(setAuthenError(message));
+  } finally {
+    dispatch(setAuthenLoading(false));
+  }
+};
 
   const handleOtpChange = (text) => {
     setOtp(text);
@@ -247,12 +225,6 @@ export default function Login() {
                 />
               </div>
 
-              {/* Vùng chứa ẩn cho reCAPTCHA Invisible */}
-              <div
-                ref={recaptchaContainerRef}
-                id="recaptcha-container"
-              ></div>
-
               <button
                 id="btn-send-code"
                 type="submit"
@@ -311,6 +283,12 @@ export default function Login() {
             </button>
           </>
         )}
+
+        <div
+          ref={recaptchaContainerRef}
+          id="recaptcha-container"
+          style={{ display: "none" }}
+        ></div>
 
         {authenError && <p className="error-text">{authenError}</p>}
       </div>
